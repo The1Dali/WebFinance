@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Financial Tracker - Statistics</title>
+        <link href="favicon.jpg" rel="icon">
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    </head>
+    <body>
+        <!-- Profile -->
+        <header class="d-flex justify-content-end align-items-center m-3">
+            <div class="dropdown">
+                <button class="btn" type="button" id="profileDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    <img src="mysterious.jpg" alt="Profile Picture" class="rounded-circle" width="40" height="40">
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileDropdown">
+                    <li><h6 class="dropdown-header">Account</h6></li>
+                    <li><a class="dropdown-item" href="#" onclick="openProfileSettings(event)">
+                        <i class="bi bi-person"></i> Profile Settings
+                    </a></li>
+                    <li><a class="dropdown-item" href="#" onclick="openBudgetSettings(event)">
+                        <i class="bi bi-wallet2"></i> Budget Settings
+                    </a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><h6 class="dropdown-header">Preferences</h6></li>
+                    <li><a class="dropdown-item" href="#" onclick="toggletheme(event)">
+                        <i class="bi bi-moon-stars" id="themeIcon"></i> <span id="themeText">Change Theme</span>
+                    </a></li>
+                    <li><a class="dropdown-item" href="#" onclick="openNotificationSettings(event)">
+                        <i class="bi bi-bell"></i> Notifications
+                    </a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="#" onclick="exportData(event)">
+                        <i class="bi bi-download"></i> Export Data
+                    </a></li>
+                    <li><a class="dropdown-item text-danger" href="#" onclick="handleLogout(event)">
+                        <i class="bi bi-box-arrow-right"></i> Logout
+                    </a></li>
+                </ul>
+            </div>
+        </header>
+
+        <!-- Profile Settings Modal -->
+        <div class="modal fade" id="profileModal" tabindex="-1" aria-labelledby="profileModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="profileModalLabel">Profile Settings</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="text-center mb-4">
+                            <img src="mysterious.jpg" alt="Profile Picture" class="rounded-circle mb-2" width="100" height="100">
+                            <div>
+                                <button class="btn btn-sm btn-outline-primary" onclick="changeProfilePicture()">Change Picture</button>
+                            </div>
+                        </div>
+                        <form id="profileForm">
+                            <div class="mb-3">
+                                <label for="userName" class="form-label">Name</label>
+                                <input type="text" class="form-control" id="userName" placeholder="Enter your name">
+                            </div>
+                            <div class="mb-3">
+                                <label for="userEmail" class="form-label">Email</label>
+                                <input type="email" class="form-control" id="userEmail" placeholder="Enter your email">
+                            </div>
+                            <div class="mb-3">
+                                <label for="userCurrency" class="form-label">Default Currency</label>
+                                <select class="form-select" id="userCurrency">
+                                    <option value="USD" selected>USD ($)</option>
+                                    <option value="EUR">EUR (€)</option>
+                                    <option value="GBP">GBP (£)</option>
+                                    <option value="TND">TND (د.ت)</option>
+                                </select>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-primary" onclick="saveProfileSettings()">Save Changes</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Budget Settings Modal -->
+        <div class="modal fade" id="budgetModal" tabindex="-1" aria-labelledby="budgetModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="budgetModalLabel">Budget Settings</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="budgetForm">
+                            <div class="mb-3">
+                                <label for="monthlyBudget" class="form-label">Monthly Budget</label>
+                                <input type="number" class="form-control" id="monthlyBudget" placeholder="Enter monthly budget">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Category Limits</label>
+                                <div class="row g-2">
+                                    <div class="col-6">
+                                        <input type="number" class="form-control" placeholder="Food" id="foodLimit">
+                                    </div>
+                                    <div class="col-6">
+                                        <input type="number" class="form-control" placeholder="Bills" id="billsLimit">
+                                    </div>
+                                    <div class="col-6">
+                                        <input type="number" class="form-control" placeholder="Transport" id="transportLimit">
+                                    </div>
+                                    <div class="col-6">
+                                        <input type="number" class="form-control" placeholder="Entertainment" id="entertainmentLimit">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="budgetAlerts" checked>
+                                    <label class="form-check-label" for="budgetAlerts">
+                                        Enable budget alerts
+                                    </label>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-primary" onclick="saveBudgetSettings()">Save Changes</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notification Settings Modal -->
+        <div class="modal fade" id="notificationModal" tabindex="-1" aria-labelledby="notificationModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="notificationModalLabel">Notification Settings</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <div class="form-check form-switch mb-2">
+                                <input class="form-check-input" type="checkbox" id="emailNotifications" checked>
+                                <label class="form-check-label" for="emailNotifications">
+                                    Email notifications
+                                </label>
+                            </div>
+                            <div class="form-check form-switch mb-2">
+                                <input class="form-check-input" type="checkbox" id="budgetWarnings" checked>
+                                <label class="form-check-label" for="budgetWarnings">
+                                    Budget warnings
+                                </label>
+                            </div>
+                            <div class="form-check form-switch mb-2">
+                                <input class="form-check-input" type="checkbox" id="weeklyReports">
+                                <label class="form-check-label" for="weeklyReports">
+                                    Weekly spending reports
+                                </label>
+                            </div>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="monthlyReports" checked>
+                                <label class="form-check-label" for="monthlyReports">
+                                    Monthly summaries
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-primary" onclick="saveNotificationSettings()">Save Changes</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistics Section -->
+        <section class="mb-4 container">
+            <a class="btn btn-outline-primary mb-3" href="index.html">Back</a>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4 class="mb-0">Statistics</h4>
+            </div>
+            
+            <!-- Histogram Chart -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                        <h5 class="card-title mb-0">Income vs Expenses</h5>
+                        <div class="d-flex gap-2 flex-wrap">
+                            <select id="timeView" class="form-select form-select-sm" style="width: auto;">
+                                <option value="daily">Daily View</option>
+                                <option value="weekly" selected>Weekly View</option>
+                                <option value="monthly">Monthly View</option>
+                                <option value="annual">Annual View</option>
+                            </select>
+                            <select id="timePeriod" class="form-select form-select-sm" style="width: auto;">
+                                <option value="current">Current Month</option>
+                            </select>
+                        </div>
+                    </div>
+                    <canvas id="histogramChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Pie Charts Section -->
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <h5 class="mb-3 text-center">Income by Category</h5>
+                    <div style="background: var(--bs-body-bg); border-radius: 0.375rem; padding: 1.5rem; border: 1px solid var(--bs-border-color);">
+                        <canvas id="incomePieChart"></canvas>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <h5 class="mb-3 text-center">Expenses by Category</h5>
+                    <div style="background: var(--bs-body-bg); border-radius: 0.375rem; padding: 1.5rem; border: 1px solid var(--bs-border-color);">
+                        <canvas id="expensesPieChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <script>
+        // Sample data for different time views
+        const sampleData = {
+            daily: {
+                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                income: [150, 200, 180, 220, 190, 250, 300],
+                expenses: [120, 150, 140, 180, 160, 200, 180]
+            },
+            weekly: {
+                labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+                income: [1200, 1100, 1300, 1400],
+                expenses: [950, 900, 1050, 1100]
+            },
+            monthly: {
+                labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+                income: [4200, 4100, 4500, 4300, 4400, 4600, 4700, 4500, 4400, 4800, 4600, 5000],
+                expenses: [3400, 3200, 3600, 3500, 3700, 3800, 3900, 3700, 3600, 4000, 3800, 4100]
+            },
+            annual: {
+                labels: ['2021', '2022', '2023', '2024'],
+                income: [45000, 48000, 52000, 54000],
+                expenses: [38000, 40000, 43000, 45000]
+            }
+        };
+
+        // Histogram Chart
+        const ctx = document.getElementById('histogramChart').getContext('2d');
+        let histogramChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: sampleData.weekly.labels,
+                datasets: [{
+                    label: 'Income',
+                    data: sampleData.weekly.income,
+                    backgroundColor: '#28a745',
+                    borderColor: '#1e7e34',
+                    borderWidth: 1
+                }, {
+                    label: 'Expenses',
+                    data: sampleData.weekly.expenses,
+                    backgroundColor: '#dc3545',
+                    borderColor: '#c82333',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return '$' + value.toLocaleString();
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataset.label + ': $' + context.parsed.y.toLocaleString();
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Income Pie Chart with legend on the right
+        const incomeCtx = document.getElementById('incomePieChart').getContext('2d');
+        const incomePieChart = new Chart(incomeCtx, {
+            type: 'pie',
+            data: {
+                labels: ['Salary', 'Freelance', 'Investment', 'Other'],
+                datasets: [{
+                    data: [60, 25, 10, 5],
+                    backgroundColor: ['#28a745', '#20c997', '#17a2b8', '#6c757d'],
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            padding: 15,
+                            font: {
+                                size: 12
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Expenses Pie Chart with legend on the right
+        const expensesCtx = document.getElementById('expensesPieChart').getContext('2d');
+        const expensesPieChart = new Chart(expensesCtx, {
+            type: 'pie',
+            data: {
+                labels: ['Food', 'Bills', 'Transport', 'Entertainment', 'Other'],
+                datasets: [{
+                    data: [35, 25, 15, 15, 10],
+                    backgroundColor: ['#dc3545', '#fd7e14', '#ffc107', '#e83e8c', '#6c757d'],
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            padding: 15,
+                            font: {
+                                size: 12
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Update period options based on view
+        function updatePeriodOptions(view) {
+            const periodSelect = document.getElementById('timePeriod');
+            periodSelect.innerHTML = '';
+            
+            switch(view) {
+                case 'daily':
+                    periodSelect.innerHTML = `
+                        <option value="current">Current Week</option>
+                        <option value="last">Last Week</option>
+                        <option value="twoWeeks">2 Weeks Ago</option>
+                    `;
+                    break;
+                case 'weekly':
+                    periodSelect.innerHTML = `
+                        <option value="current">Current Month</option>
+                        <option value="last">Last Month</option>
+                        <option value="twoMonths">2 Months Ago</option>
+                    `;
+                    break;
+                case 'monthly':
+                    periodSelect.innerHTML = `
+                        <option value="current">Current Year</option>
+                        <option value="last">Last Year</option>
+                        <option value="twoYears">2 Years Ago</option>
+                    `;
+                    break;
+                case 'annual':
+                    periodSelect.innerHTML = `
+                        <option value="all">All Years</option>
+                        <option value="last5">Last 5 Years</option>
+                        <option value="last10">Last 10 Years</option>
+                    `;
+                    break;
+            }
+        }
+
+        // Update chart data
+        function updateChart(view) {
+            const data = sampleData[view];
+            histogramChart.data.labels = data.labels;
+            histogramChart.data.datasets[0].data = data.income;
+            histogramChart.data.datasets[1].data = data.expenses;
+            histogramChart.update();
+        }
+
+        // Event listeners for time view changes
+        document.getElementById('timeView').addEventListener('change', function(e) {
+            const view = e.target.value;
+            updatePeriodOptions(view);
+            updateChart(view);
+        });
+
+        document.getElementById('timePeriod').addEventListener('change', function(e) {
+            console.log('Period changed to:', e.target.value);
+        });
+
+        // Initialize period options
+        updatePeriodOptions('weekly');
+
+        // Theme toggle function - FIXED
+        function toggletheme(e) {
+            if (e) e.preventDefault();
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-bs-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            html.setAttribute('data-bs-theme', newTheme);
+
+            // Update theme icon and text
+            const themeIcon = document.getElementById('themeIcon');
+            const themeText = document.getElementById('themeText');
+            if (newTheme === 'dark') {
+                themeIcon.className = 'bi bi-moon-stars';
+                themeText.textContent = 'Dark Theme';
+            } else {
+                themeIcon.className = 'bi bi-sun';
+                themeText.textContent = 'Light Theme';
+            }
+            localStorage.setItem('theme', newTheme);
+        }
+
+        // Open Profile Settings Modal
+        function openProfileSettings(e) {
+            e.preventDefault();
+            const modal = new bootstrap.Modal(document.getElementById('profileModal'));
+            
+            const savedName = localStorage.getItem('userName') || '';
+            const savedEmail = localStorage.getItem('userEmail') || '';
+            const savedCurrency = localStorage.getItem('userCurrency') || 'USD';
+            
+            document.getElementById('userName').value = savedName;
+            document.getElementById('userEmail').value = savedEmail;
+            document.getElementById('userCurrency').value = savedCurrency;
+            
+            modal.show();
+        }
+
+        // Save Profile Settings
+        function saveProfileSettings() {
+            const name = document.getElementById('userName').value;
+            const email = document.getElementById('userEmail').value;
+            const currency = document.getElementById('userCurrency').value;
+            
+            localStorage.setItem('userName', name);
+            localStorage.setItem('userEmail', email);
+            localStorage.setItem('userCurrency', currency);
+            
+            const modal = bootstrap.Modal.getInstance(document.getElementById('profileModal'));
+            modal.hide();
+            
+            alert('Profile settings saved successfully!');
+        }
+
+        // Open Budget Settings Modal
+        function openBudgetSettings(e) {
+            e.preventDefault();
+            const modal = new bootstrap.Modal(document.getElementById('budgetModal'));
+            
+            document.getElementById('monthlyBudget').value = localStorage.getItem('monthlyBudget') || '';
+            document.getElementById('foodLimit').value = localStorage.getItem('foodLimit') || '';
+            document.getElementById('billsLimit').value = localStorage.getItem('billsLimit') || '';
+            document.getElementById('transportLimit').value = localStorage.getItem('transportLimit') || '';
+            document.getElementById('entertainmentLimit').value = localStorage.getItem('entertainmentLimit') || '';
+            document.getElementById('budgetAlerts').checked = localStorage.getItem('budgetAlerts') !== 'false';
+            
+            modal.show();
+        }
+
+        // Save Budget Settings
+        function saveBudgetSettings() {
+            localStorage.setItem('monthlyBudget', document.getElementById('monthlyBudget').value);
+            localStorage.setItem('foodLimit', document.getElementById('foodLimit').value);
+            localStorage.setItem('billsLimit', document.getElementById('billsLimit').value);
+            localStorage.setItem('transportLimit', document.getElementById('transportLimit').value);
+            localStorage.setItem('entertainmentLimit', document.getElementById('entertainmentLimit').value);
+            localStorage.setItem('budgetAlerts', document.getElementById('budgetAlerts').checked);
+            
+            const modal = bootstrap.Modal.getInstance(document.getElementById('budgetModal'));
+            modal.hide();
+            
+            alert('Budget settings saved successfully!');
+        }
+
+        // Open Notification Settings Modal
+        function openNotificationSettings(e) {
+            e.preventDefault();
+            const modal = new bootstrap.Modal(document.getElementById('notificationModal'));
+            
+            document.getElementById('emailNotifications').checked = localStorage.getItem('emailNotifications') !== 'false';
+            document.getElementById('budgetWarnings').checked = localStorage.getItem('budgetWarnings') !== 'false';
+            document.getElementById('weeklyReports').checked = localStorage.getItem('weeklyReports') === 'true';
+            document.getElementById('monthlyReports').checked = localStorage.getItem('monthlyReports') !== 'false';
+            
+            modal.show();
+        }
+
+        // Save Notification Settings
+        function saveNotificationSettings() {
+            localStorage.setItem('emailNotifications', document.getElementById('emailNotifications').checked);
+            localStorage.setItem('budgetWarnings', document.getElementById('budgetWarnings').checked);
+            localStorage.setItem('weeklyReports', document.getElementById('weeklyReports').checked);
+            localStorage.setItem('monthlyReports', document.getElementById('monthlyReports').checked);
+            
+            const modal = bootstrap.Modal.getInstance(document.getElementById('notificationModal'));
+            modal.hide();
+            
+            alert('Notification settings saved successfully!');
+        }
+
+        // Export Data
+        function exportData(e) {
+            e.preventDefault();
+            
+            const exportData = {
+                profile: {
+                    name: localStorage.getItem('userName') || '',
+                    email: localStorage.getItem('userEmail') || '',
+                    currency: localStorage.getItem('userCurrency') || 'USD'
+                },
+                budget: {
+                    monthly: localStorage.getItem('monthlyBudget') || '',
+                    limits: {
+                        food: localStorage.getItem('foodLimit') || '',
+                        bills: localStorage.getItem('billsLimit') || '',
+                        transport: localStorage.getItem('transportLimit') || '',
+                        entertainment: localStorage.getItem('entertainmentLimit') || ''
+                    }
+                },
+                settings: {
+                    theme: localStorage.getItem('theme') || 'dark',
+                    notifications: {
+                        email: localStorage.getItem('emailNotifications') !== 'false',
+                        budget: localStorage.getItem('budgetWarnings') !== 'false',
+                        weekly: localStorage.getItem('weeklyReports') === 'true',
+                        monthly: localStorage.getItem('monthlyReports') !== 'false'
+                    }
+                }
+            };
+            
+            const dataStr = JSON.stringify(exportData, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'financial-tracker-data.json';
+            link.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Change Profile Picture
+        function changeProfilePicture() {
+            alert('Profile picture upload would be implemented here with a file input');
+        }
+
+        // Handle Logout
+        function handleLogout(e) {
+            e.preventDefault();
+            if (confirm('Are you sure you want to logout?')) {
+                alert('Logout functionality would redirect to login page');
+            }
+        }
+
+        // Load theme on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            document.documentElement.setAttribute('data-bs-theme', savedTheme);
+            
+            const themeIcon = document.getElementById('themeIcon');
+            const themeText = document.getElementById('themeText');
+            if (savedTheme === 'dark') {
+                themeIcon.className = 'bi bi-moon-stars';
+                themeText.textContent = 'Dark Theme';
+            } else {
+                themeIcon.className = 'bi bi-sun';
+                themeText.textContent = 'Light Theme';
+            }
+        });
+        </script>
+    </body>
+</html>
