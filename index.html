@@ -258,7 +258,7 @@
         </section>
 
         <!-- Add Button -->
-        <button class="btn btn-primary btn-lg rounded-circle" style="position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px; font-size: 24px;">+</button>
+        <a href="addt.html" class="btn btn-primary btn-lg rounded-circle" style="position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px; font-size: 24px;">+</a>
         
         <script>
         // Histogram Chart
@@ -342,15 +342,14 @@
         });
 
         // Theme toggle function
-        function toggletheme() 
-        {
-            const html = document.documentElement;
-            const currentTheme = html.getAttribute('data-bs-theme');
-            html.setAttribute('data-bs-theme', currentTheme === 'dark' ? 'light' : 'dark');
-
-            // Update theme icon and text
-            const themeIcon = document.getElementById('themeIcon');
-            const themeText = document.getElementById('themeText');
+        function toggletheme(e) {
+            if (e) e.preventDefault();
+            var html = document.documentElement;
+            var currentTheme = html.getAttribute('data-bs-theme');
+            var newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            html.setAttribute('data-bs-theme', newTheme);
+            var themeIcon = document.getElementById('themeIcon');
+            var themeText = document.getElementById('themeText');
             if (newTheme === 'dark') {
                 themeIcon.className = 'bi bi-moon-stars';
                 themeText.textContent = 'Dark Theme';
