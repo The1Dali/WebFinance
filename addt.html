@@ -5,25 +5,16 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>Add Transaction - Financial Tracker</title>
         <link href="favicon.jpg" rel="icon">
+        <link href="styles.css" rel="stylesheet">
         <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-        <style>
-            .quick-amount-btn {
-                min-width: 60px;
-            }
-            .receipt-preview {
-                max-width: 100%;
-                max-height: 200px;
-                margin-top: 10px;
-                border-radius: 0.375rem;
-            }
-        </style>
+        <script src="profile.js"></script>
     </head>
     <body>
         <!-- Header -->
         <header class="d-flex justify-content-between align-items-center m-3">
-            <a href="index.html" class="btn btn-outline-secondary">
+            <a href="index.html" class="btn btn-outline-warning">
                 <i class="bi bi-arrow-left"></i> Back
             </a>
             <h4 class="mb-0">Add Transaction</h4>
@@ -195,7 +186,7 @@
         </div>
 
         <!-- Main Form -->
-        <main class="container mb-5" style="max-width: 800px;">
+        <main class="container mb-5">
             <div class="card">
                 <div class="card-body">
                     <form id="transactionForm">
@@ -233,7 +224,7 @@
                                 <button type="button" class="btn btn-sm btn-outline-secondary quick-amount-btn" onclick="setQuickAmount(20)">$20</button>
                                 <button type="button" class="btn btn-sm btn-outline-secondary quick-amount-btn" onclick="setQuickAmount(50)">$50</button>
                                 <button type="button" class="btn btn-sm btn-outline-secondary quick-amount-btn" onclick="setQuickAmount(100)">$100</button>
-                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="openCalculator()">
+                                <button type="button" class="btn btn-sm btn-outline-warning" onclick="openCalculator()">
                                     <i class="bi bi-calculator"></i> Calculator
                                 </button>
                             </div>
@@ -254,7 +245,7 @@
                                     <option value="Education">📚 Education</option>
                                     <option value="Other">📦 Other</option>
                                 </optgroup>
-                                <optgroup label="Income Categories" id="incomeCategories" style="display: none;">
+                                <optgroup label="Income Categories" id="incomeCategories recstyle">
                                     <option value="Salary">💼 Salary</option>
                                     <option value="Freelance">💻 Freelance</option>
                                     <option value="Investment">📈 Investment</option>
@@ -288,12 +279,12 @@
                         <!-- Recurring -->
                         <div class="mb-4">
                             <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" id="isRecurring">
+                                <input class="form-check-input bg-warning" type="checkbox" id="isRecurring">
                                 <label class="form-check-label fw-bold" for="isRecurring">
                                     Recurring Transaction
                                 </label>
                             </div>
-                            <div id="recurringOptions" style="display: none;" class="mt-3">
+                            <div id="recurringOptions" class="mt-3 recstyle">
                                 <label class="form-label">Frequency</label>
                                 <select class="form-select mb-2" id="recurringFrequency">
                                     <option value="daily">Daily</option>
@@ -302,11 +293,11 @@
                                     <option value="yearly">Yearly</option>
                                     <option value="custom">Custom</option>
                                 </select>
-                                <div id="customFrequencyOptions" style="display: none;" class="mb-2">
+                                <div id="customFrequencyOptions" class="mb-2 recstyle>
                                     <label class="form-label">Custom Frequency</label>
                                     <div class="input-group mb-2">
                                         <input type="number" class="form-control" id="customInterval" placeholder="2" min="1" value="1">
-                                        <select class="form-select" id="customIntervalType" style="max-width: 150px;">
+                                        <select class="form-select" id="customIntervalType">
                                             <option value="days">Day(s)</option>
                                             <option value="weeks">Week(s)</option>
                                             <option value="months">Month(s)</option>
@@ -323,10 +314,10 @@
 
                         <!-- Buttons -->
                         <div class="d-flex gap-2 justify-content-end">
-                            <button type="button" class="btn btn-outline-primary" onclick="saveAsDraft()">
+                            <button type="button" class="btn btn-outline-warning" onclick="saveAsDraft()">
                                 <i class="bi bi-bookmark"></i> Save Draft
                             </button>
-                            <button type="submit" class="btn btn-primary">
+                            <button type="submit" class="btn btn-warning">
                                 <i class="bi bi-check-circle"></i> Add Transaction
                             </button>
                         </div>
@@ -392,19 +383,6 @@
         <script>
         // Initialize page
         (function() {
-            // Set theme
-            var savedTheme = localStorage.getItem('theme') || 'dark';
-            document.documentElement.setAttribute('data-bs-theme', savedTheme);
-            
-            var themeIcon = document.getElementById('themeIcon');
-            var themeText = document.getElementById('themeText');
-            if (savedTheme === 'dark') {
-                themeIcon.className = 'bi bi-moon-stars';
-                themeText.textContent = 'Dark Theme';
-            } else {
-                themeIcon.className = 'bi bi-sun';
-                themeText.textContent = 'Light Theme';
-            }
             
             // Set date and time
             document.getElementById('date').valueAsDate = new Date();
@@ -475,9 +453,17 @@
 
         // Recurring toggle
         document.getElementById('isRecurring').addEventListener('change', function() {
-            document.getElementById('recurringOptions').style.display = this.checked ? 'block' : 'none';
+        var recurringSwitch = this;
+        document.getElementById('recurringOptions').style.display = this.checked ? 'block' : 'none';
+    
+        if (this.checked) {
+            recurringSwitch.style.setProperty('background-color', '#ffc107', 'important');
+            recurringSwitch.style.setProperty('border-color', '#ffc107', 'important');
+        } else {
+            recurringSwitch.style.removeProperty('background-color');
+            recurringSwitch.style.removeProperty('border-color');
+        }
         });
-
         // Custom frequency toggle
         document.getElementById('recurringFrequency').addEventListener('change', function() {
             document.getElementById('customFrequencyOptions').style.display = this.value === 'custom' ? 'block' : 'none';
@@ -523,125 +509,8 @@
             window.location.href = 'index.html';
         });
 
-        // Functions
         function setQuickAmount(amount) {
             document.getElementById('amount').value = amount;
-        }
-
-        function toggletheme(e) {
-            if (e) e.preventDefault();
-            var html = document.documentElement;
-            var currentTheme = html.getAttribute('data-bs-theme');
-            var newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-            html.setAttribute('data-bs-theme', newTheme);
-            var themeIcon = document.getElementById('themeIcon');
-            var themeText = document.getElementById('themeText');
-            if (newTheme === 'dark') {
-                themeIcon.className = 'bi bi-moon-stars';
-                themeText.textContent = 'Dark Theme';
-            } else {
-                themeIcon.className = 'bi bi-sun';
-                themeText.textContent = 'Light Theme';
-            }
-            localStorage.setItem('theme', newTheme);
-        }
-
-        function openProfileSettings(e) {
-            e.preventDefault();
-            var modal = new bootstrap.Modal(document.getElementById('profileModal'));
-            document.getElementById('userName').value = localStorage.getItem('userName') || '';
-            document.getElementById('userEmail').value = localStorage.getItem('userEmail') || '';
-            document.getElementById('userCurrency').value = localStorage.getItem('userCurrency') || 'USD';
-            modal.show();
-        }
-
-        function saveProfileSettings() {
-            localStorage.setItem('userName', document.getElementById('userName').value);
-            localStorage.setItem('userEmail', document.getElementById('userEmail').value);
-            localStorage.setItem('userCurrency', document.getElementById('userCurrency').value);
-            bootstrap.Modal.getInstance(document.getElementById('profileModal')).hide();
-            alert('Profile saved!');
-        }
-
-        function openBudgetSettings(e) {
-            e.preventDefault();
-            var modal = new bootstrap.Modal(document.getElementById('budgetModal'));
-            document.getElementById('monthlyBudget').value = localStorage.getItem('monthlyBudget') || '';
-            document.getElementById('foodLimit').value = localStorage.getItem('foodLimit') || '';
-            document.getElementById('billsLimit').value = localStorage.getItem('billsLimit') || '';
-            document.getElementById('transportLimit').value = localStorage.getItem('transportLimit') || '';
-            document.getElementById('entertainmentLimit').value = localStorage.getItem('entertainmentLimit') || '';
-            document.getElementById('budgetAlerts').checked = localStorage.getItem('budgetAlerts') !== 'false';
-            modal.show();
-        }
-
-        function saveBudgetSettings() {
-            localStorage.setItem('monthlyBudget', document.getElementById('monthlyBudget').value);
-            localStorage.setItem('foodLimit', document.getElementById('foodLimit').value);
-            localStorage.setItem('billsLimit', document.getElementById('billsLimit').value);
-            localStorage.setItem('transportLimit', document.getElementById('transportLimit').value);
-            localStorage.setItem('entertainmentLimit', document.getElementById('entertainmentLimit').value);
-            localStorage.setItem('budgetAlerts', document.getElementById('budgetAlerts').checked);
-            bootstrap.Modal.getInstance(document.getElementById('budgetModal')).hide();
-            alert('Budget saved!');
-        }
-
-        function openNotificationSettings(e) {
-            e.preventDefault();
-            var modal = new bootstrap.Modal(document.getElementById('notificationModal'));
-            document.getElementById('emailNotifications').checked = localStorage.getItem('emailNotifications') !== 'false';
-            document.getElementById('budgetWarnings').checked = localStorage.getItem('budgetWarnings') !== 'false';
-            document.getElementById('weeklyReports').checked = localStorage.getItem('weeklyReports') === 'true';
-            document.getElementById('monthlyReports').checked = localStorage.getItem('monthlyReports') !== 'false';
-            modal.show();
-        }
-
-        function saveNotificationSettings() {
-            localStorage.setItem('emailNotifications', document.getElementById('emailNotifications').checked);
-            localStorage.setItem('budgetWarnings', document.getElementById('budgetWarnings').checked);
-            localStorage.setItem('weeklyReports', document.getElementById('weeklyReports').checked);
-            localStorage.setItem('monthlyReports', document.getElementById('monthlyReports').checked);
-            bootstrap.Modal.getInstance(document.getElementById('notificationModal')).hide();
-            alert('Notifications saved!');
-        }
-
-        function exportData(e) {
-            e.preventDefault();
-            var data = {
-                profile: {
-                    name: localStorage.getItem('userName') || '',
-                    email: localStorage.getItem('userEmail') || '',
-                    currency: localStorage.getItem('userCurrency') || 'USD'
-                },
-                budget: {
-                    monthly: localStorage.getItem('monthlyBudget') || '',
-                    limits: {
-                        food: localStorage.getItem('foodLimit') || '',
-                        bills: localStorage.getItem('billsLimit') || '',
-                        transport: localStorage.getItem('transportLimit') || '',
-                        entertainment: localStorage.getItem('entertainmentLimit') || ''
-                    }
-                }
-            };
-            var dataStr = JSON.stringify(data, null, 2);
-            var dataBlob = new Blob([dataStr], { type: 'application/json' });
-            var url = URL.createObjectURL(dataBlob);
-            var link = document.createElement('a');
-            link.href = url;
-            link.download = 'financial-data.json';
-            link.click();
-            URL.revokeObjectURL(url);
-        }
-
-        function changeProfilePicture() {
-            alert('Profile picture upload would be implemented here');
-        }
-
-        function handleLogout(e) {
-            e.preventDefault();
-            if (confirm('Logout?')) {
-                alert('Logout functionality');
-            }
         }
 
         function saveAsDraft() {
