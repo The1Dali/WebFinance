@@ -1,0 +1,4 @@
+*.db
+/Database
+/__pycache__
+/flask_session
