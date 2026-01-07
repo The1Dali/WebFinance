@@ -35,7 +35,7 @@ def after_request(response):
 @login_required
 def index():
     """Show dashboard"""
-    return apology("TODO", 500)
+    return apg("TODO", 500)
     """
     user_id = session["user_id"]
     cash = db.execute("SELECT cash FROM users WHERE id = ?", user_id)[0]["cash"]
@@ -124,11 +124,11 @@ def login():
     if request.method == "POST":
         # Ensure username was submitted
         if not request.form.get("username"):
-            return apology("must provide username", 403)
+            return apg("must provide username", 403)
 
         # Ensure password was submitted
         elif not request.form.get("password"):
-            return apology("must provide password", 403)
+            return apg("must provide password", 403)
 
         # Query database for username
         rows = db.execute(
@@ -139,7 +139,7 @@ def login():
         if len(rows) != 1 or not check_password_hash(
             rows[0]["hash"], request.form.get("password")
         ):
-            return apology("invalid username and/or password", 403)
+            return apg("invalid username and/or password", 403)
 
         # Remember which user has logged in
         session["user_id"] = rows[0]["id"]
@@ -155,30 +155,10 @@ def login():
 @app.route("/logout")
 def logout():
     """Log user out"""
-
     # Forget any user_id
     session.clear()
-
     # Redirect user to login form
     return redirect("/")
-
-
-@app.route("/quote", methods=["GET", "POST"])
-@login_required
-def quote():
-    """Get stock quote."""
-    if request.method == "POST":
-        if not request.form.get("symbol"):
-            return apology("must provide stock symbol")
-        
-        quoted = lookup(request.form.get("symbol"))
-        if not quoted:
-            return apology("invalid symbol", 400)
-        else:
-            quoted["price"] = usd(quoted["price"])
-            return render_template("quoted.html", quoted=quoted)
-    else:
-        return render_template("quote.html")
 
 
 @app.route("/register", methods=["GET", "POST"])
@@ -186,17 +166,19 @@ def register():
     """Register user"""
     if request.method == "POST":
         if not request.form.get("username"):
-            return apology("must provide username", 400)
+            return apg("must provide username", 400)
         elif not request.form.get("password"):
-            return apology("must provide password", 400)
+            return apg("must provide password", 400)
+        elif len(request.form.get("password")) < 8:
+            return apg("password must be atleast 8 characters long", 400)
         elif request.form.get("password") != request.form.get("confirmation"):
-            return apology("passwords do not match", 400)
+            return apg("passwords do not match", 403)
 
         try:
             db.execute("INSERT INTO users (username, hash) VALUES (?, ?)", request.form.get("username"), generate_password_hash(request.form.get("password")))
             return redirect("/")
         except ValueError:
-            return apology("Username already exists", 400)
+            return apg("Username already exists", 400)
     else:
         return render_template("register.html")
     

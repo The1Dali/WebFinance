@@ -5,6 +5,9 @@
 {% endblock %}
 
 {% block main %}
-    <!-- https://memegen.link/ -->
-    <img alt="{{ top }}" class="border img-fluid" src="https://api.memegen.link/images/custom/{{ top | urlencode }}/{{ bottom | urlencode }}.jpg?background=https://imgur.com/a/r5m724B&width=400" title="{{ top }}">
+   <div class="meme-container">
+        <img src="{{ url_for('static', filename='mysterious.jpg') }}" alt="Background" class="meme-background">
+        <div class="meme-text meme-top">{{ top }}</div>
+        <div class="meme-text meme-bottom">{{ bottom }}</div>
+    </div>
 {% endblock %}
