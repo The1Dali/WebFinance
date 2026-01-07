@@ -22,7 +22,7 @@
                 <button class="btn" type="button" id="profileDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                     <img src="mysterious.jpg" alt="Profile Picture" class="rounded-circle" width="40" height="40">
                 </button>
-                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileDropdown">
+                <ul class="dropdown-menu dropdown-menu-end">
                     <li><h6 class="dropdown-header">Account</h6></li>
                     <li><a class="dropdown-item" href="#" onclick="openProfileSettings(event)">
                         <i class="bi bi-person"></i> Profile Settings
@@ -55,13 +55,13 @@
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title">Profile Settings</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        <button type="button" class="btn-close" aria-label="Profile settings" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
                         <div class="text-center mb-4">
                             <img src="mysterious.jpg" alt="Profile Picture" class="rounded-circle mb-2" width="100" height="100">
                             <div>
-                                <button class="btn btn-sm btn-outline-primary" onclick="changeProfilePicture()">Change Picture</button>
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="changeProfilePicture()">Change Picture</button>
                             </div>
                         </div>
                         <form id="profileForm">
@@ -98,7 +98,7 @@
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title">Budget Settings</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        <button type="button" class="btn-close" aria-label="Budget settings" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
                         <form id="budgetForm">
@@ -147,7 +147,7 @@
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title">Notification Settings</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        <button type="button" class="btn-close" aria-label="Notification Settings" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
                         <div class="mb-3">
@@ -236,8 +236,8 @@
                             <select class="form-select" id="category" required>
                                 <option value="">Select a category</option>
                                 <optgroup label="Expense Categories" id="expenseCategories">
-                                    <option value="Food">🍔 Food & Dining</option>
-                                    <option value="Bills">📄 Bills & Utilities</option>
+                                    <option value="Food">🍔 Food &amp; Dining</option>
+                                    <option value="Bills">📄 Bills &amp; Utilities</option>
                                     <option value="Transport">🚗 Transportation</option>
                                     <option value="Entertainment">🎬 Entertainment</option>
                                     <option value="Shopping">🛍️ Shopping</option>
@@ -245,7 +245,7 @@
                                     <option value="Education">📚 Education</option>
                                     <option value="Other">📦 Other</option>
                                 </optgroup>
-                                <optgroup label="Income Categories" id="incomeCategories recstyle">
+                                <optgroup label="Income Categories" id="incomeCategoriesrecstyle">
                                     <option value="Salary">💼 Salary</option>
                                     <option value="Freelance">💻 Freelance</option>
                                     <option value="Investment">📈 Investment</option>
@@ -293,7 +293,7 @@
                                     <option value="yearly">Yearly</option>
                                     <option value="custom">Custom</option>
                                 </select>
-                                <div id="customFrequencyOptions" class="mb-2 recstyle>
+                                <div id="customFrequencyOptions" class="mb-2 recstyle">
                                     <label class="form-label">Custom Frequency</label>
                                     <div class="input-group mb-2">
                                         <input type="number" class="form-control" id="customInterval" placeholder="2" min="1" value="1">
@@ -352,28 +352,27 @@
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title">Calculator</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        <button type="button" class="btn-close" aria-label="Calculator" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
                         <input type="text" class="form-control form-control-lg mb-3 text-end" id="calcDisplay" value="0" readonly>
                         <div class="row g-2">
-                            <div class="col-3"><button class="btn btn-outline-secondary w-100" onclick="calcInput('7')">7</button></div>
-                            <div class="col-3"><button class="btn btn-outline-secondary w-100" onclick="calcInput('8')">8</button></div>
-                            <div class="col-3"><button class="btn btn-outline-secondary w-100" onclick="calcInput('9')">9</button></div>
-                            <div class="col-3"><button class="btn btn-warning w-100" onclick="calcInput('/')">÷</button></div>
-                            <div class="col-3"><button class="btn btn-outline-secondary w-100" onclick="calcInput('4')">4</button></div>
-                            <div class="col-3"><button class="btn btn-outline-secondary w-100" onclick="calcInput('5')">5</button></div>
-                            <div class="col-3"><button class="btn btn-outline-secondary w-100" onclick="calcInput('6')">6</button></div>
-                            <div class="col-3"><button class="btn btn-warning w-100" onclick="calcInput('*')">×</button></div>
-                            <div class="col-3"><button class="btn btn-outline-secondary w-100" onclick="calcInput('1')">1</button></div>
-                            <div class="col-3"><button class="btn btn-outline-secondary w-100" onclick="calcInput('2')">2</button></div>
-                            <div class="col-3"><button class="btn btn-outline-secondary w-100" onclick="calcInput('3')">3</button></div>
-                            <div class="col-3"><button class="btn btn-warning w-100" onclick="calcInput('-')">−</button></div>
-                            <div class="col-3"><button class="btn btn-outline-secondary w-100" onclick="calcInput('0')">0</button></div>
-                            <div class="col-3"><button class="btn btn-outline-secondary w-100" onclick="calcInput('.')">.</button></div>
-                            <div class="col-3"><button class="btn btn-danger w-100" onclick="calcClear()">C</button></div>
-                            <div class="col-3"><button class="btn btn-warning w-100" onclick="calcInput('+')">+</button></div>
-                            <div class="col-12"><button class="btn btn-success w-100" onclick="calcEquals()">=</button></div>
+                            <div class="col-3"><button type="button" class="btn btn-outline-secondary w-100" onclick="calcInput('7')">7</button></div>
+                            <div class="col-3"><button type="button" class="btn btn-outline-secondary w-100" onclick="calcInput('8')">8</button></div>
+                            <div class="col-3"><button type="button" class="btn btn-outline-secondary w-100" onclick="calcInput('9')">9</button></div>
+                            <div class="col-3"><button type="button" class="btn btn-warning w-100" onclick="calcInput('/')">÷</button></div>
+                            <div class="col-3"><button type="button" class="btn btn-outline-secondary w-100" onclick="calcInput('4')">4</button></div>
+                            <div class="col-3"><button type="button" class="btn btn-outline-secondary w-100" onclick="calcInput('5')">5</button></div>
+                            <div class="col-3"><button type="button" class="btn btn-outline-secondary w-100" onclick="calcInput('6')">6</button></div>
+                            <div class="col-3"><button type="button" class="btn btn-warning w-100" onclick="calcInput('*')">×</button></div>
+                            <div class="col-3"><button type="button" class="btn btn-outline-secondary w-100" onclick="calcInput('1')">1</button></div>
+                            <div class="col-3"><button type="button" class="btn btn-outline-secondary w-100" onclick="calcInput('2')">2</button></div>
+                            <div class="col-3"><button type="button" class="btn btn-outline-secondary w-100" onclick="calcInput('3')">3</button></div>
+                            <div class="col-3"><button type="button" class="btn btn-outline-secondary w-100" onclick="calcInput('0')">0</button></div>
+                            <div class="col-3"><button type="button" class="btn btn-outline-secondary w-100" onclick="calcInput('.')">.</button></div>
+                            <div class="col-3"><button type="button" class="btn btn-danger w-100" onclick="calcClear()">C</button></div>
+                            <div class="col-3"><button type="button" class="btn btn-warning w-100" onclick="calcInput('+')">+</button></div>
+                            <div class="col-12"><button type="button" class="btn btn-success w-100" onclick="calcEquals()">=</button></div>
                         </div>
                     </div>
                 </div>
