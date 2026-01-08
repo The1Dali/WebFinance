@@ -1,597 +1,306 @@
-<!DOCTYPE html>
-<html lang="en" data-bs-theme="dark">
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>Add Transaction - Financial Tracker</title>
-        <link href="favicon.jpg" rel="icon">
-        <link href="styles.css" rel="stylesheet">
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-        <script src="profile.js"></script>
-    </head>
-    <body>
-        <!-- Header -->
-        <header class="d-flex justify-content-between align-items-center m-3">
-            <a href="index.html" class="btn btn-outline-warning">
-                <i class="bi bi-arrow-left"></i> Back
-            </a>
-            <h4 class="mb-0">Add Transaction</h4>
-            <div class="dropdown">
-                <button class="btn" type="button" id="profileDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                    <img src="mysterious.jpg" alt="Profile Picture" class="rounded-circle" width="40" height="40">
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end">
-                    <li><h6 class="dropdown-header">Account</h6></li>
-                    <li><a class="dropdown-item" href="#" onclick="openProfileSettings(event)">
-                        <i class="bi bi-person"></i> Profile Settings
-                    </a></li>
-                    <li><a class="dropdown-item" href="#" onclick="openBudgetSettings(event)">
-                        <i class="bi bi-wallet2"></i> Budget Settings
-                    </a></li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li><h6 class="dropdown-header">Preferences</h6></li>
-                    <li><a class="dropdown-item" href="#" onclick="toggletheme(event)">
-                        <i class="bi bi-moon-stars" id="themeIcon"></i> <span id="themeText">Change Theme</span>
-                    </a></li>
-                    <li><a class="dropdown-item" href="#" onclick="openNotificationSettings(event)">
-                        <i class="bi bi-bell"></i> Notifications
-                    </a></li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item" href="#" onclick="exportData(event)">
-                        <i class="bi bi-download"></i> Export Data
-                    </a></li>
-                    <li><a class="dropdown-item text-danger" href="#" onclick="handleLogout(event)">
-                        <i class="bi bi-box-arrow-right"></i> Logout
-                    </a></li>
-                </ul>
-            </div>
-        </header>
+{% extends "layout.html" %}
 
-        <!-- Profile Settings Modal -->
-        <div class="modal fade" id="profileModal" tabindex="-1">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Profile Settings</h5>
-                        <button type="button" class="btn-close" aria-label="Profile settings" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="text-center mb-4">
-                            <img src="mysterious.jpg" alt="Profile Picture" class="rounded-circle mb-2" width="100" height="100">
-                            <div>
-                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="changeProfilePicture()">Change Picture</button>
-                            </div>
-                        </div>
-                        <form id="profileForm">
-                            <div class="mb-3">
-                                <label for="userName" class="form-label">Name</label>
-                                <input type="text" class="form-control" id="userName" placeholder="Enter your name">
-                            </div>
-                            <div class="mb-3">
-                                <label for="userEmail" class="form-label">Email</label>
-                                <input type="email" class="form-control" id="userEmail" placeholder="Enter your email">
-                            </div>
-                            <div class="mb-3">
-                                <label for="userCurrency" class="form-label">Default Currency</label>
-                                <select class="form-select" id="userCurrency">
-                                    <option value="USD" selected>USD ($)</option>
-                                    <option value="EUR">EUR (€)</option>
-                                    <option value="GBP">GBP (£)</option>
-                                    <option value="TND">TND (د.ت)</option>
-                                </select>
-                            </div>
-                        </form>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="button" class="btn btn-primary" onclick="saveProfileSettings()">Save Changes</button>
-                    </div>
-                </div>
-            </div>
-        </div>
+{% block title %}
+    Add Transaction
+{% endblock %}
 
-        <!-- Budget Settings Modal -->
-        <div class="modal fade" id="budgetModal" tabindex="-1">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Budget Settings</h5>
-                        <button type="button" class="btn-close" aria-label="Budget settings" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <form id="budgetForm">
-                            <div class="mb-3">
-                                <label for="monthlyBudget" class="form-label">Monthly Budget</label>
-                                <input type="number" class="form-control" id="monthlyBudget" placeholder="Enter monthly budget">
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Category Limits</label>
-                                <div class="row g-2">
-                                    <div class="col-6">
-                                        <input type="number" class="form-control" placeholder="Food" id="foodLimit">
-                                    </div>
-                                    <div class="col-6">
-                                        <input type="number" class="form-control" placeholder="Bills" id="billsLimit">
-                                    </div>
-                                    <div class="col-6">
-                                        <input type="number" class="form-control" placeholder="Transport" id="transportLimit">
-                                    </div>
-                                    <div class="col-6">
-                                        <input type="number" class="form-control" placeholder="Entertainment" id="entertainmentLimit">
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="mb-3">
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" id="budgetAlerts" checked>
-                                    <label class="form-check-label" for="budgetAlerts">
-                                        Enable budget alerts
-                                    </label>
-                                </div>
-                            </div>
-                        </form>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="button" class="btn btn-primary" onclick="saveBudgetSettings()">Save Changes</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Notification Settings Modal -->
-        <div class="modal fade" id="notificationModal" tabindex="-1">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Notification Settings</h5>
-                        <button type="button" class="btn-close" aria-label="Notification Settings" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="mb-3">
-                            <div class="form-check form-switch mb-2">
-                                <input class="form-check-input" type="checkbox" id="emailNotifications" checked>
-                                <label class="form-check-label" for="emailNotifications">
-                                    Email notifications
-                                </label>
-                            </div>
-                            <div class="form-check form-switch mb-2">
-                                <input class="form-check-input" type="checkbox" id="budgetWarnings" checked>
-                                <label class="form-check-label" for="budgetWarnings">
-                                    Budget warnings
-                                </label>
-                            </div>
-                            <div class="form-check form-switch mb-2">
-                                <input class="form-check-input" type="checkbox" id="weeklyReports">
-                                <label class="form-check-label" for="weeklyReports">
-                                    Weekly spending reports
-                                </label>
-                            </div>
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" id="monthlyReports" checked>
-                                <label class="form-check-label" for="monthlyReports">
-                                    Monthly summaries
-                                </label>
-                            </div>
+{% block main %}
+    <!-- Main Form -->
+    <main class="container mb-5">
+        <div class="card">
+            <div class="card-body">
+                <form action="/add" method="post" enctype="multipart/form-data" id="transactionForm">
+                    <!-- Transaction Type -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Transaction Type *</label>
+                        <div class="btn-group w-100" role="group">
+                            <input type="radio" class="btn-check" name="type" id="typeExpense" value="EXPENSE" checked>
+                            <label class="btn btn-outline-danger" for="typeExpense">
+                                <i class="bi bi-arrow-down-circle"></i> Expense
+                            </label>
+                            <input type="radio" class="btn-check" name="type" id="typeIncome" value="INCOME">
+                            <label class="btn btn-outline-success" for="typeIncome">
+                                <i class="bi bi-arrow-up-circle"></i> Income
+                            </label>
                         </div>
                     </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="button" class="btn btn-primary" onclick="saveNotificationSettings()">Save Changes</button>
+
+                    <!-- Name -->
+                    <div class="mb-4">
+                        <label for="name" class="form-label fw-bold">Name *</label>
+                        <input type="text" name="name" class="form-control" id="name" placeholder="e.g., Grocery shopping" required>
                     </div>
-                </div>
-            </div>
-        </div>
 
-        <!-- Main Form -->
-        <main class="container mb-5">
-            <div class="card">
-                <div class="card-body">
-                    <form id="transactionForm">
-                        <!-- Transaction Type -->
-                        <div class="mb-4">
-                            <label class="form-label fw-bold">Transaction Type *</label>
-                            <div class="btn-group w-100" role="group">
-                                <input type="radio" class="btn-check" name="transactionType" id="typeExpense" value="expense" checked>
-                                <label class="btn btn-outline-danger" for="typeExpense">
-                                    <i class="bi bi-arrow-down-circle"></i> Expense
-                                </label>
-                                <input type="radio" class="btn-check" name="transactionType" id="typeIncome" value="income">
-                                <label class="btn btn-outline-success" for="typeIncome">
-                                    <i class="bi bi-arrow-up-circle"></i> Income
-                                </label>
-                            </div>
+                    <!-- Amount -->
+                    <div class="mb-4">
+                        <label for="amount" class="form-label fw-bold">Amount *</label>
+                        <div class="input-group input-group-lg">
+                            <span class="input-group-text" id="currencySymbol">$</span>
+                            <input type="number" name="amount" class="form-control" id="amount" placeholder="0.00" step="0.01" min="0.01" required>
                         </div>
-
-                        <!-- Name -->
-                        <div class="mb-4">
-                            <label for="description" class="form-label fw-bold">Name *</label>
-                            <input type="text" class="form-control" id="description" placeholder="e.g., Grocery shopping" required>
+                        <div class="d-flex gap-2 mt-2 flex-wrap">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setQuickAmount(5)">$5</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setQuickAmount(10)">$10</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setQuickAmount(20)">$20</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setQuickAmount(50)">$50</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setQuickAmount(100)">$100</button>
+                            <button type="button" class="btn btn-sm btn-outline-warning" onclick="openCalculator()">
+                                <i class="bi bi-calculator"></i> Calculator
+                            </button>
                         </div>
+                    </div>
 
-                        <!-- Amount -->
-                        <div class="mb-4">
-                            <label for="amount" class="form-label fw-bold">Amount *</label>
-                            <div class="input-group input-group-lg">
-                                <span class="input-group-text" id="currencySymbol">$</span>
-                                <input type="number" class="form-control" id="amount" placeholder="0.00" step="0.01" required>
-                            </div>
-                            <div class="d-flex gap-2 mt-2 flex-wrap">
-                                <button type="button" class="btn btn-sm btn-outline-secondary quick-amount-btn" onclick="setQuickAmount(5)">$5</button>
-                                <button type="button" class="btn btn-sm btn-outline-secondary quick-amount-btn" onclick="setQuickAmount(10)">$10</button>
-                                <button type="button" class="btn btn-sm btn-outline-secondary quick-amount-btn" onclick="setQuickAmount(20)">$20</button>
-                                <button type="button" class="btn btn-sm btn-outline-secondary quick-amount-btn" onclick="setQuickAmount(50)">$50</button>
-                                <button type="button" class="btn btn-sm btn-outline-secondary quick-amount-btn" onclick="setQuickAmount(100)">$100</button>
-                                <button type="button" class="btn btn-sm btn-outline-warning" onclick="openCalculator()">
-                                    <i class="bi bi-calculator"></i> Calculator
-                                </button>
-                            </div>
+                    <!-- Category -->
+                    <div class="mb-4">
+                        <label for="category" class="form-label fw-bold">Category *</label>
+                        <select class="form-select" name="category" id="category" required>
+                            <option value="">Select a category</option>
+                            <optgroup label="Expense Categories" id="expenseCategories">
+                                <option value="Food">🍔 Food &amp; Dining</option>
+                                <option value="Bills">📄 Bills &amp; Utilities</option>
+                                <option value="Transport">🚗 Transportation</option>
+                                <option value="Entertainment">🎬 Entertainment</option>
+                                <option value="Shopping">🛍️ Shopping</option>
+                                <option value="Health">💊 Healthcare</option>
+                                <option value="Education">📚 Education</option>
+                                <option value="Other">📦 Other</option>
+                            </optgroup>
+                            <optgroup label="Income Categories" id="incomeCategories" style="display: none;">
+                                <option value="Salary">💼 Salary</option>
+                                <option value="Freelance">💻 Freelance</option>
+                                <option value="Investment">📈 Investment</option>
+                                <option value="Gift">🎁 Gift</option>
+                                <option value="Other">💰 Other</option>
+                            </optgroup>
+                        </select>
+                    </div>
+
+                    <!-- Date -->
+                    <div class="row mb-4">
+                        <div class="col-md-8">
+                            <label for="date" class="form-label fw-bold">Date *</label>
+                            <input type="date" name="date" class="form-control" id="date" required>
                         </div>
+                    </div>
 
-                        <!-- Category -->
-                        <div class="mb-4">
-                            <label for="category" class="form-label fw-bold">Category *</label>
-                            <select class="form-select" id="category" required>
-                                <option value="">Select a category</option>
-                                <optgroup label="Expense Categories" id="expenseCategories">
-                                    <option value="Food">🍔 Food &amp; Dining</option>
-                                    <option value="Bills">📄 Bills &amp; Utilities</option>
-                                    <option value="Transport">🚗 Transportation</option>
-                                    <option value="Entertainment">🎬 Entertainment</option>
-                                    <option value="Shopping">🛍️ Shopping</option>
-                                    <option value="Health">💊 Healthcare</option>
-                                    <option value="Education">📚 Education</option>
-                                    <option value="Other">📦 Other</option>
-                                </optgroup>
-                                <optgroup label="Income Categories" id="incomeCategoriesrecstyle">
-                                    <option value="Salary">💼 Salary</option>
-                                    <option value="Freelance">💻 Freelance</option>
-                                    <option value="Investment">📈 Investment</option>
-                                    <option value="Gift">🎁 Gift</option>
-                                    <option value="Other">💰 Other</option>
-                                </optgroup>
+                    <!-- Notes -->
+                    <div class="mb-4">
+                        <label for="notes" class="form-label fw-bold">Notes</label>
+                        <textarea class="form-control" name="notes" id="notes" rows="3" placeholder="Add notes..."></textarea>
+                    </div>
+
+                    <!-- Receipt -->
+                    <div class="mb-4">
+                        <label for="receipt" class="form-label fw-bold">Receipt</label>
+                        <input type="file" class="form-control" name="receipt" id="receipt" accept="image/*,.pdf">
+                        <div id="receiptPreview" class="mt-2"></div>
+                    </div>
+
+                    <!-- Recurring -->
+                    <div class="mb-4">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" name="is_recurring" id="isRecurring" value="1">
+                            <label class="form-check-label fw-bold" for="isRecurring">
+                                Recurring Transaction
+                            </label>
+                        </div>
+                        <div id="recurringOptions" class="mt-3" style="display: none;">
+                            <label class="form-label">Frequency</label>
+                            <select class="form-select mb-2" name="recurring_frequency" id="recurringFrequency">
+                                <option value="">Not Recurring</option>
+                                <option value="DAILY">Daily</option>
+                                <option value="WEEKLY">Weekly</option>
+                                <option value="MONTHLY" selected>Monthly</option>
+                                <option value="YEARLY">Yearly</option>
                             </select>
+                            <label class="form-label">End Date (Optional)</label>
+                            <input type="date" class="form-control" name="recurring_end_date" id="recurringEndDate">
                         </div>
+                    </div>
 
-                        <!-- Date and Time -->
-                        <div class="row mb-4">
-                            <div class="col-md-8">
-                                <label for="date" class="form-label fw-bold">Date *</label>
-                                <input type="date" class="form-control" id="date" required>
-                            </div>
-                        </div>
-
-                        <!-- Notes -->
-                        <div class="mb-4">
-                            <label for="notes" class="form-label fw-bold">Notes</label>
-                            <textarea class="form-control" id="notes" rows="3" placeholder="Add notes..."></textarea>
-                        </div>
-
-                        <!-- Receipt -->
-                        <div class="mb-4">
-                            <label for="receipt" class="form-label fw-bold">Receipt</label>
-                            <input type="file" class="form-control" id="receipt" accept="image/*,.pdf">
-                            <div id="receiptPreview"></div>
-                        </div>
-
-                        <!-- Recurring -->
-                        <div class="mb-4">
-                            <div class="form-check form-switch">
-                                <input class="form-check-input bg-warning" type="checkbox" id="isRecurring">
-                                <label class="form-check-label fw-bold" for="isRecurring">
-                                    Recurring Transaction
-                                </label>
-                            </div>
-                            <div id="recurringOptions" class="mt-3 recstyle">
-                                <label class="form-label">Frequency</label>
-                                <select class="form-select mb-2" id="recurringFrequency">
-                                    <option value="daily">Daily</option>
-                                    <option value="weekly">Weekly</option>
-                                    <option value="monthly" selected>Monthly</option>
-                                    <option value="yearly">Yearly</option>
-                                    <option value="custom">Custom</option>
-                                </select>
-                                <div id="customFrequencyOptions" class="mb-2 recstyle">
-                                    <label class="form-label">Custom Frequency</label>
-                                    <div class="input-group mb-2">
-                                        <input type="number" class="form-control" id="customInterval" placeholder="2" min="1" value="1">
-                                        <select class="form-select" id="customIntervalType">
-                                            <option value="days">Day(s)</option>
-                                            <option value="weeks">Week(s)</option>
-                                            <option value="months">Month(s)</option>
-                                            <option value="years">Year(s)</option>
-                                        </select>
-                                    </div>
-                                    <label class="form-label">Start Date</label>
-                                    <input type="date" class="form-control mb-2" id="recurringStartDate">
-                                </div>
-                                <label class="form-label">End Date (Optional)</label>
-                                <input type="date" class="form-control" id="recurringEndDate">
-                            </div>
-                        </div>
-
-                        <!-- Buttons -->
-                        <div class="d-flex gap-2 justify-content-end">
-                            <button type="button" class="btn btn-outline-warning" onclick="saveAsDraft()">
-                                <i class="bi bi-bookmark"></i> Save Draft
-                            </button>
-                            <button type="submit" class="btn btn-warning">
-                                <i class="bi bi-check-circle"></i> Add Transaction
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-
-            <!-- Quick Add -->
-            <div class="card mt-4">
-                <div class="card-body">
-                    <h6 class="card-title mb-3">
-                        <i class="bi bi-clock-history"></i> Quick Add
-                    </h6>
-                    <div class="d-flex gap-2 flex-wrap">
-                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="duplicateTransaction('groceries')">
-                            🍔 Groceries ($50)
+                    <!-- Buttons -->
+                    <div class="d-flex gap-2 justify-content-end">
+                        <button type="button" class="btn btn-outline-secondary" onclick="window.location.href='/'">
+                            <i class="bi bi-x-circle"></i> Cancel
                         </button>
-                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="duplicateTransaction('gas')">
-                            ⛽ Gas ($40)
-                        </button>
-                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="duplicateTransaction('coffee')">
-                            ☕ Coffee ($5)
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i> Add Transaction
                         </button>
                     </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Quick Add Templates -->
+        <div class="card mt-4">
+            <div class="card-body">
+                <h6 class="card-title mb-3">
+                    <i class="bi bi-clock-history"></i> Quick Add
+                </h6>
+                <div class="d-flex gap-2 flex-wrap">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="fillTemplate('Groceries', 'Food', 50)">
+                        🍔 Groceries ($50)
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="fillTemplate('Gas', 'Transport', 40)">
+                        ⛽ Gas ($40)
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="fillTemplate('Coffee', 'Food', 5)">
+                        ☕ Coffee ($5)
+                    </button>
                 </div>
             </div>
-        </main>
+        </div>
+    </main>
 
-        <!-- Calculator Modal -->
-        <div class="modal fade" id="calculatorModal" tabindex="-1">
-            <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Calculator</h5>
-                        <button type="button" class="btn-close" aria-label="Calculator" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <input type="text" class="form-control form-control-lg mb-3 text-end" id="calcDisplay" value="0" readonly>
-                        <div class="row g-2">
-                            <div class="col-3"><button type="button" class="btn btn-outline-secondary w-100" onclick="calcInput('7')">7</button></div>
-                            <div class="col-3"><button type="button" class="btn btn-outline-secondary w-100" onclick="calcInput('8')">8</button></div>
-                            <div class="col-3"><button type="button" class="btn btn-outline-secondary w-100" onclick="calcInput('9')">9</button></div>
-                            <div class="col-3"><button type="button" class="btn btn-warning w-100" onclick="calcInput('/')">÷</button></div>
-                            <div class="col-3"><button type="button" class="btn btn-outline-secondary w-100" onclick="calcInput('4')">4</button></div>
-                            <div class="col-3"><button type="button" class="btn btn-outline-secondary w-100" onclick="calcInput('5')">5</button></div>
-                            <div class="col-3"><button type="button" class="btn btn-outline-secondary w-100" onclick="calcInput('6')">6</button></div>
-                            <div class="col-3"><button type="button" class="btn btn-warning w-100" onclick="calcInput('*')">×</button></div>
-                            <div class="col-3"><button type="button" class="btn btn-outline-secondary w-100" onclick="calcInput('1')">1</button></div>
-                            <div class="col-3"><button type="button" class="btn btn-outline-secondary w-100" onclick="calcInput('2')">2</button></div>
-                            <div class="col-3"><button type="button" class="btn btn-outline-secondary w-100" onclick="calcInput('3')">3</button></div>
-                            <div class="col-3"><button type="button" class="btn btn-outline-secondary w-100" onclick="calcInput('0')">0</button></div>
-                            <div class="col-3"><button type="button" class="btn btn-outline-secondary w-100" onclick="calcInput('.')">.</button></div>
-                            <div class="col-3"><button type="button" class="btn btn-danger w-100" onclick="calcClear()">C</button></div>
-                            <div class="col-3"><button type="button" class="btn btn-warning w-100" onclick="calcInput('+')">+</button></div>
-                            <div class="col-12"><button type="button" class="btn btn-success w-100" onclick="calcEquals()">=</button></div>
-                        </div>
+    <!-- Calculator Modal -->
+    <div class="modal fade" id="calculatorModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Calculator</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="text" class="form-control form-control-lg mb-3 text-end" id="calcDisplay" value="0" readonly>
+                    <div class="row g-2">
+                        <div class="col-3"><button type="button" class="btn btn-outline-secondary w-100" onclick="calcInput('7')">7</button></div>
+                        <div class="col-3"><button type="button" class="btn btn-outline-secondary w-100" onclick="calcInput('8')">8</button></div>
+                        <div class="col-3"><button type="button" class="btn btn-outline-secondary w-100" onclick="calcInput('9')">9</button></div>
+                        <div class="col-3"><button type="button" class="btn btn-warning w-100" onclick="calcInput('/')">÷</button></div>
+                        <div class="col-3"><button type="button" class="btn btn-outline-secondary w-100" onclick="calcInput('4')">4</button></div>
+                        <div class="col-3"><button type="button" class="btn btn-outline-secondary w-100" onclick="calcInput('5')">5</button></div>
+                        <div class="col-3"><button type="button" class="btn btn-outline-secondary w-100" onclick="calcInput('6')">6</button></div>
+                        <div class="col-3"><button type="button" class="btn btn-warning w-100" onclick="calcInput('*')">×</button></div>
+                        <div class="col-3"><button type="button" class="btn btn-outline-secondary w-100" onclick="calcInput('1')">1</button></div>
+                        <div class="col-3"><button type="button" class="btn btn-outline-secondary w-100" onclick="calcInput('2')">2</button></div>
+                        <div class="col-3"><button type="button" class="btn btn-outline-secondary w-100" onclick="calcInput('3')">3</button></div>
+                        <div class="col-3"><button type="button" class="btn btn-warning w-100" onclick="calcInput('-')">-</button></div>
+                        <div class="col-3"><button type="button" class="btn btn-outline-secondary w-100" onclick="calcInput('0')">0</button></div>
+                        <div class="col-3"><button type="button" class="btn btn-outline-secondary w-100" onclick="calcInput('.')">.</button></div>
+                        <div class="col-3"><button type="button" class="btn btn-danger w-100" onclick="calcClear()">C</button></div>
+                        <div class="col-3"><button type="button" class="btn btn-warning w-100" onclick="calcInput('+')">+</button></div>
+                        <div class="col-12"><button type="button" class="btn btn-success w-100" onclick="calcEquals()">=</button></div>
                     </div>
                 </div>
             </div>
         </div>
+    </div>
 
-        <script>
-        // Initialize page
-        (function() {
+    <script>
+    // Initialize page
+    document.addEventListener('DOMContentLoaded', function() {
+        // Set today's date as default
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('date').value = today;
+    });
+
+    // Transaction type toggle
+    document.querySelectorAll('input[name="type"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            const expenseCat = document.getElementById('expenseCategories');
+            const incomeCat = document.getElementById('incomeCategories');
+            const categorySelect = document.getElementById('category');
             
-            // Set date and time
-            document.getElementById('date').valueAsDate = new Date();
-            var now = new Date();
-            
-            // Set currency
-            var savedCurrency = localStorage.getItem('userCurrency') || 'USD';
-            var currencySymbols = { 'USD': '$', 'EUR': '€', 'GBP': '£', 'TND': 'د.ت' };
-            document.getElementById('currencySymbol').textContent = currencySymbols[savedCurrency] || '$';
-            
-            // Load draft
-            var draft = localStorage.getItem('transactionDraft');
-            if (draft) {
-                if (confirm('Load saved draft?')) {
-                    var data = JSON.parse(draft);
-                    if (data.type === 'income') {
-                        document.getElementById('typeIncome').checked = true;
-                        document.getElementById('expenseCategories').style.display = 'none';
-                        document.getElementById('incomeCategories').style.display = '';
-                    }
-                    if (data.amount) document.getElementById('amount').value = data.amount;
-                    if (data.category) document.getElementById('category').value = data.category;
-                    if (data.description) document.getElementById('description').value = data.description;
-                    if (data.date) document.getElementById('date').value = data.date;
-                    if (data.notes) document.getElementById('notes').value = data.notes;
-                    if (data.isRecurring) {
-                        document.getElementById('isRecurring').checked = true;
-                        document.getElementById('recurringOptions').style.display = 'block';
-                        if (data.recurringFrequency) document.getElementById('recurringFrequency').value = data.recurringFrequency;
-                        if (data.recurringFrequency === 'custom') {
-                            document.getElementById('customFrequencyOptions').style.display = 'block';
-                            if (data.customInterval) document.getElementById('customInterval').value = data.customInterval;
-                            if (data.customIntervalType) document.getElementById('customIntervalType').value = data.customIntervalType;
-                            if (data.recurringStartDate) document.getElementById('recurringStartDate').value = data.recurringStartDate;
-                        }
-                        if (data.recurringEndDate) document.getElementById('recurringEndDate').value = data.recurringEndDate;
-                    }
-                    localStorage.removeItem('transactionDraft');
-                }
+            if (this.value === 'EXPENSE') {
+                expenseCat.style.display = '';
+                incomeCat.style.display = 'none';
+            } else {
+                expenseCat.style.display = 'none';
+                incomeCat.style.display = '';
             }
-        })();
-
-        // Transaction type toggle
-        document.querySelectorAll('input[name="transactionType"]').forEach(function(radio) {
-            radio.addEventListener('change', function() {
-                var expenseCat = document.getElementById('expenseCategories');
-                var incomeCat = document.getElementById('incomeCategories');
-                var categorySelect = document.getElementById('category');
-                var currentCategory = categorySelect.value;
-                
-                if (this.value === 'expense') {
-                    expenseCat.style.display = '';
-                    incomeCat.style.display = 'none';
-                    var expenseOptions = Array.from(expenseCat.querySelectorAll('option')).map(function(o) { return o.value; });
-                    if (!expenseOptions.includes(currentCategory)) {
-                        categorySelect.value = '';
-                    }
-                } else {
-                    expenseCat.style.display = 'none';
-                    incomeCat.style.display = '';
-                    var incomeOptions = Array.from(incomeCat.querySelectorAll('option')).map(function(o) { return o.value; });
-                    if (!incomeOptions.includes(currentCategory)) {
-                        categorySelect.value = '';
-                    }
-                }
-            });
+            categorySelect.value = '';
         });
+    });
 
-        // Recurring toggle
-        document.getElementById('isRecurring').addEventListener('change', function() {
-        var recurringSwitch = this;
+    // Recurring toggle
+    document.getElementById('isRecurring').addEventListener('change', function() {
         document.getElementById('recurringOptions').style.display = this.checked ? 'block' : 'none';
-    
-        if (this.checked) {
-            recurringSwitch.style.setProperty('background-color', '#ffc107', 'important');
-            recurringSwitch.style.setProperty('border-color', '#ffc107', 'important');
+        if (!this.checked) {
+            document.getElementById('recurringFrequency').value = '';
+            document.getElementById('recurringEndDate').value = '';
+        }
+    });
+
+    // Receipt preview
+    document.getElementById('receipt').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        const preview = document.getElementById('receiptPreview');
+        
+        if (file && file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                preview.innerHTML = `<img src="${e.target.result}" class="img-thumbnail mt-2" style="max-width: 200px;" alt="Receipt Preview">`;
+            };
+            reader.readAsDataURL(file);
+        } else if (file) {
+            preview.innerHTML = `<p class="text-muted mt-2"><i class="bi bi-file-earmark-pdf"></i> ${file.name}</p>`;
         } else {
-            recurringSwitch.style.removeProperty('background-color');
-            recurringSwitch.style.removeProperty('border-color');
+            preview.innerHTML = '';
         }
-        });
-        // Custom frequency toggle
-        document.getElementById('recurringFrequency').addEventListener('change', function() {
-            document.getElementById('customFrequencyOptions').style.display = this.value === 'custom' ? 'block' : 'none';
-        });
+    });
 
-        // Receipt preview
-        document.getElementById('receipt').addEventListener('change', function(e) {
-            var file = e.target.files[0];
-            var preview = document.getElementById('receiptPreview');
-            if (file && file.type.startsWith('image/')) {
-                var reader = new FileReader();
-                reader.onload = function(e) {
-                    preview.innerHTML = '<img src="' + e.target.result + '" class="receipt-preview" alt="Receipt">';
-                };
-                reader.readAsDataURL(file);
-            } else if (file) {
-                preview.innerHTML = '<p class="text-muted mt-2"><i class="bi bi-file-earmark"></i> ' + file.name + '</p>';
-            }
-        });
+    // Quick amount setter
+    function setQuickAmount(amount) {
+        document.getElementById('amount').value = amount;
+    }
 
-        // Form submit
-        document.getElementById('transactionForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            var transaction = {
-                id: Date.now(),
-                type: document.querySelector('input[name="transactionType"]:checked').value,
-                amount: parseFloat(document.getElementById('amount').value),
-                category: document.getElementById('category').value,
-                description: document.getElementById('description').value,
-                date: document.getElementById('date').value,
-                notes: document.getElementById('notes').value,
-                isRecurring: document.getElementById('isRecurring').checked,
-                recurringFrequency: document.getElementById('recurringFrequency').value,
-                customInterval: document.getElementById('customInterval').value,
-                customIntervalType: document.getElementById('customIntervalType').value,
-                recurringStartDate: document.getElementById('recurringStartDate').value,
-                recurringEndDate: document.getElementById('recurringEndDate').value
-            };
-            var transactions = JSON.parse(localStorage.getItem('transactions') || '[]');
-            transactions.push(transaction);
-            localStorage.setItem('transactions', JSON.stringify(transactions));
-            alert('Transaction added!');
-            window.location.href = 'index.html';
-        });
+    // Template filler
+    function fillTemplate(name, category, amount) {
+        document.getElementById('name').value = name;
+        document.getElementById('category').value = category;
+        document.getElementById('amount').value = amount;
+    }
 
-        function setQuickAmount(amount) {
-            document.getElementById('amount').value = amount;
-        }
+    // Calculator functions
+    let calcValue = '0';
+    let calcOperator = '';
+    let calcPrevValue = '';
 
-        function saveAsDraft() {
-            var draft = {
-                type: document.querySelector('input[name="transactionType"]:checked').value,
-                amount: document.getElementById('amount').value,
-                category: document.getElementById('category').value,
-                description: document.getElementById('description').value,
-                date: document.getElementById('date').value,
-                time: document.getElementById('time').value,
-                notes: document.getElementById('notes').value,
-                isRecurring: document.getElementById('isRecurring').checked,
-                recurringFrequency: document.getElementById('recurringFrequency').value,
-                customInterval: document.getElementById('customInterval').value,
-                customIntervalType: document.getElementById('customIntervalType').value,
-                recurringStartDate: document.getElementById('recurringStartDate').value,
-                recurringEndDate: document.getElementById('recurringEndDate').value,
-                timestamp: Date.now()
-            };
-            localStorage.setItem('transactionDraft', JSON.stringify(draft));
-            alert('Draft saved!');
-        }
+    function openCalculator() {
+        const modal = new bootstrap.Modal(document.getElementById('calculatorModal'));
+        calcValue = '0';
+        calcOperator = '';
+        calcPrevValue = '';
+        document.getElementById('calcDisplay').value = calcValue;
+        modal.show();
+    }
 
-        function duplicateTransaction(type) {
-            var templates = {
-                groceries: { description: 'Groceries', category: 'Food', amount: 50 },
-                gas: { description: 'Gas', category: 'Transport', amount: 40 },
-                coffee: { description: 'Coffee', category: 'Food', amount: 5 }
-            };
-            var template = templates[type];
-            if (template) {
-                document.getElementById('description').value = template.description;
-                document.getElementById('category').value = template.category;
-                document.getElementById('amount').value = template.amount;
-            }
-        }
-
-        // Calculator
-        var calcValue = '0';
-        var calcOperator = '';
-        var calcPrevValue = '';
-
-        function openCalculator() {
-            var modal = new bootstrap.Modal(document.getElementById('calculatorModal'));
-            calcValue = '0';
-            document.getElementById('calcDisplay').value = calcValue;
-            modal.show();
-        }
-
-        function calcInput(val) {
-            if (['+', '-', '*', '/'].includes(val)) {
+    function calcInput(val) {
+        if (['+', '-', '*', '/'].includes(val)) {
+            if (calcValue !== '0') {
                 calcOperator = val;
                 calcPrevValue = calcValue;
                 calcValue = '0';
-            } else {
-                calcValue = calcValue === '0' ? val : calcValue + val;
             }
-            document.getElementById('calcDisplay').value = calcValue;
+        } else {
+            calcValue = calcValue === '0' ? val : calcValue + val;
         }
+        document.getElementById('calcDisplay').value = calcValue;
+    }
 
-        function calcClear() {
-            calcValue = '0';
-            calcOperator = '';
-            calcPrevValue = '';
-            document.getElementById('calcDisplay').value = calcValue;
-        }
+    function calcClear() {
+        calcValue = '0';
+        calcOperator = '';
+        calcPrevValue = '';
+        document.getElementById('calcDisplay').value = calcValue;
+    }
 
-        function calcEquals() {
-            if (calcOperator && calcPrevValue) {
-                var a = parseFloat(calcPrevValue);
-                var b = parseFloat(calcValue);
-                var result = 0;
-                switch(calcOperator) {
-                    case '+': result = a + b; break;
-                    case '-': result = a - b; break;
-                    case '*': result = a * b; break;
-                    case '/': result = a / b; break;
-                }
-                document.getElementById('amount').value = result.toFixed(2);
-                bootstrap.Modal.getInstance(document.getElementById('calculatorModal')).hide();
+    function calcEquals() {
+        if (calcOperator && calcPrevValue) {
+            const a = parseFloat(calcPrevValue);
+            const b = parseFloat(calcValue);
+            let result = 0;
+            
+            switch(calcOperator) {
+                case '+': result = a + b; break;
+                case '-': result = a - b; break;
+                case '*': result = a * b; break;
+                case '/': result = b !== 0 ? a / b : 0; break;
             }
+            
+            document.getElementById('amount').value = result.toFixed(2);
+            bootstrap.Modal.getInstance(document.getElementById('calculatorModal')).hide();
         }
-        </script>
-    </body>
-</html>
+    }
+    </script>
+{% endblock %}

@@ -53,17 +53,23 @@ def index():
     """
 
 
-@app.route("/buy", methods=["GET", "POST"])
+@app.route("/add-transaction", methods=["GET", "POST"])
 @login_required
-def buy():
-    """Buy shares of stock"""
+def add_transaction():
+    """add a transaction to the database"""
     if request.method == "POST":
-        if not request.form.get("symbol"):
-            return apology("Please specify the symbol", 400)
-        elif not request.form.get("shares"):
-            return apology("Please specify the number of shares to buy", 400)
-        elif lookup(request.form.get("symbol")) == None:
-            return apology("Invalid symbol", 400)
+        if not request.form.get("type"):
+            return apg("Please specify the type of the transaction", 400)
+        elif not request.form.get("name"):
+            return apg("Please specify the name of the transaction", 400)
+        elif not request.form.get("amount"):
+            return apg("Please specify the amount of the transaction", 400)
+        elif not request.form.get("category"):
+            return apg("Please specify the category of the transaction", 400)
+        elif not request.form.get("date"):
+            return apg("Please specify the date of the transaction", 400)
+
+        #to be continued
         try:
             shares = int(request.form.get("shares"))
             if shares <= 0:
@@ -93,7 +99,7 @@ def buy():
         return render_template("buy.html")
 
 
-@app.route("/history")
+@app.route("/statistic")
 @login_required
 def history():
     """Show history of transactions"""
@@ -184,7 +190,7 @@ def register():
     
 
 
-@app.route("/sell", methods=["GET", "POST"])
+@app.route("/transaction", methods=["GET", "POST"])
 @login_required
 def sell():
     """Sell shares of stock"""
