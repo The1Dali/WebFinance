@@ -56,27 +56,20 @@
                         <select class="form-select" name="category" id="category" required>
                             <option value="">Select a category</option>
                             <optgroup label="Expense Categories" id="expenseCategories">
-                                <option value="Food">🍔 Food &amp; Dining</option>
-                                <option value="Bills">📄 Bills &amp; Utilities</option>
-                                <option value="Transport">🚗 Transportation</option>
-                                <option value="Entertainment">🎬 Entertainment</option>
-                                <option value="Shopping">🛍️ Shopping</option>
-                                <option value="Health">💊 Healthcare</option>
-                                <option value="Education">📚 Education</option>
-                                <option value="Other">📦 Other</option>
+                                {% for category in categories.EXPENSE %}
+                                <option value="{{ category['name'] }}">{{ category['icon'] }} {{ category['name'] }}</option>
+                                {% endfor %}
                             </optgroup>
                             <optgroup label="Income Categories" id="incomeCategories" style="display: none;">
-                                <option value="Salary">💼 Salary</option>
-                                <option value="Freelance">💻 Freelance</option>
-                                <option value="Investment">📈 Investment</option>
-                                <option value="Gift">🎁 Gift</option>
-                                <option value="Other">💰 Other</option>
+                                {% for category in categories.INCOME %}
+                                <option value="{{ category['name'] }}">{{ category['icon'] }} {{ category['name'] }}</option>
+                                {% endfor %}
                             </optgroup>
                         </select>
                     </div>
 
                     <!-- Date -->
-                    <div class="row mb-4">
+                    <div class="row mb-4 justify-content-center">
                         <div class="col-md-8">
                             <label for="date" class="form-label fw-bold">Date *</label>
                             <input type="date" name="date" class="form-control" id="date" required>

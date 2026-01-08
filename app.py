@@ -1,11 +1,16 @@
 import os
+from datetime import datetime
 
 from cs50 import SQL
 from flask import Flask, flash, redirect, render_template, request, session
 from flask_session import Session
 from werkzeug.security import check_password_hash, generate_password_hash
+from werkzeug.utils import secure_filename
 
-from helpers import apg, login_required, usd
+from helpers import apg, login_required, usd, check_budget_warning, allowed_file
+
+UPLOAD_FOLDER = "Database/Receipts"
+MAX_FILE_SIZE = 5 * 1024 * 1024 
 
 # Configure application
 app = Flask(__name__)
@@ -53,50 +58,138 @@ def index():
     """
 
 
-@app.route("/add-transaction", methods=["GET", "POST"])
+@app.route("/add", methods=["GET", "POST"])
 @login_required
 def add_transaction():
     """add a transaction to the database"""
+    user_id = session["user_id"]
+    categories = db.execute("SELECT * FROM categories")
     if request.method == "POST":
-        if not request.form.get("type"):
-            return apg("Please specify the type of the transaction", 400)
-        elif not request.form.get("name"):
-            return apg("Please specify the name of the transaction", 400)
-        elif not request.form.get("amount"):
-            return apg("Please specify the amount of the transaction", 400)
-        elif not request.form.get("category"):
-            return apg("Please specify the category of the transaction", 400)
-        elif not request.form.get("date"):
-            return apg("Please specify the date of the transaction", 400)
 
-        #to be continued
-        try:
-            shares = int(request.form.get("shares"))
-            if shares <= 0:
-                return apology("Number of shares must be a positive integer", 400)
-        except (ValueError, TypeError):
-            return apology("Number of shares must be a positive integer", 400)
-
-        user_id = session["user_id"]
-        share = lookup(request.form.get("symbol"))
-        price = shares * share["price"]
-        balance = db.execute("SELECT cash FROM users WHERE id = ?", user_id)[0]["cash"]
-        if balance < price:
-            return apology("Can't afford", 400)
-        else:
-            newbalance = balance - price
-
-        try:
-            db.execute("UPDATE users SET cash = ? WHERE id = ?", newbalance, user_id)
-            db.execute("INSERT INTO transactions (user_id, symbol, shares, price, type) VALUES (?, ?, ?, ?, ?)", user_id, share["symbol"], shares, share["price"], "BUY")
-            flash("Bought!", "success")
-        except Exception:
-            return apology("Transaction Failed", 500)
+        name = request.form.get("name")
+        amount = request.form.get("amount")
+        transaction_type = request.form.get("type")
+        category = request.form.get("category")
+        notes = request.form.get("notes")
+        is_recurring = 1 if request.form.get("is_recurring") else 0
+        recurring_frequency = request.form.get("recurring_frequency")
+        recurring_end_date = request.form.get("recurring_end_date")
         
-        return redirect("/")
+        if not name:
+            flash("Transaction name is required", "error")
+            return render_template("addt.html", categories=categories)
+        
+        if not amount:
+            flash("Amount is required", "error")
+            return render_template("addt.html", categories=categories)
+        
+        try:
+            amount = float(amount)
+            if amount <= 0:
+                flash("Amount must be positive", "error")
+                return render_template("addt.html", categories=categories)
+        except ValueError:
+            flash("Invalid amount", "error")
+            return render_template("addt.html", categories=categories)
+        
+        if not transaction_type or transaction_type not in ['EXPENSE', 'INCOME']:
+            flash("Invalid transaction type", "error")
+            return render_template("addt.html", categories=categories)
+        
+        if not category:
+            flash("Category is required", "error")
+            return render_template("addt.html", categories=categories)
+        
+        if is_recurring:
+            if not recurring_frequency or recurring_frequency not in ['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY']:
+                flash("Invalid recurring frequency", "error")
+                return render_template("addt.html", categories=categories)
+        
+
+        receipt_path = None
+        if 'receipt' in request.files:
+            file = request.files['receipt']
+            if file and file.filename and allowed_file(file.filename):
+                file.seek(0, os.SEEK_END)
+                file_size = file.tell()
+                file.seek(0)
+                
+                if file_size > MAX_FILE_SIZE:
+                    flash("File size must be less than 5MB", "error")
+                    return render_template("addt.html", categories=categories)
+                
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                filename = secure_filename(file.filename)
+                unique_filename = f"{session['user_id']}_{timestamp}_{filename}"
+                
+                os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+                
+                filepath = os.path.join(UPLOAD_FOLDER, unique_filename)
+                file.save(filepath)
+                receipt_path = f"Database/Receipts/{unique_filename}"
+        
+        try:
+            if is_recurring:
+                next_occurrence = datetime.now().date()
+                
+                recurring_id = db.execute("""INSERT INTO recurring_transactions 
+                    (user_id, name, amount, type, category, frequency, start_date, end_date, next_occurrence, notes)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""", 
+                    user_id, 
+                    name, 
+                    amount, 
+                    transaction_type, 
+                    category, 
+                    recurring_frequency,
+                    datetime.now().date(),
+                    recurring_end_date if recurring_end_date else None,
+                    next_occurrence,
+                    notes)
+                
+                db.execute("""INSERT INTO transactions 
+                    (user_id, name, amount, type, category, notes, receipt_path, recurring_template_id)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)""", 
+                    user_id, 
+                    name, 
+                    amount, 
+                    transaction_type, 
+                    category, 
+                    notes, 
+                    receipt_path,
+                    recurring_id)
+                
+                flash(f"Recurring {transaction_type.lower()} added successfully!", "success")
+            else:
+
+                db.execute("""INSERT INTO transactions 
+                    (user_id, name, amount, type, category, notes, receipt_path, is_recurring)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)""", 
+                    user_id, 
+                    name, 
+                    amount, 
+                    transaction_type, 
+                    category, 
+                    notes, 
+                    receipt_path,
+                    0
+                )
+                flash(f"{transaction_type.capitalize()} added successfully!", "success")
+            
+            if transaction_type == "EXPENSE":
+                check_budget_warning(category, amount)
+            
+            return redirect("/")
+            
+        except Exception as e:
+            # Clean up uploaded file if database insert fails
+            if receipt_path and os.path.exists(os.path.join('static', receipt_path)):
+                os.remove(os.path.join('static', receipt_path))
+            
+            flash(f"Error adding transaction: {str(e)}", "error")
+            return render_template("addt.html", categories=categories)
     
-    else:
-        return render_template("buy.html")
+
+    return render_template("addt.html", categories=categories)
 
 
 @app.route("/statistic")
