@@ -60,29 +60,97 @@ def allowed_file(filename):
 
 def check_budget_warning(category, amount):
     """Check if transaction exceeds budget and send warning"""
-    current_spending = db.execute("""
-        SELECT COALESCE(SUM(amount), 0) as total
-        FROM transactions
-        WHERE user_id = ?
-        AND type = 'EXPENSE'
-        AND strftime('%Y-%m', time) = strftime('%Y-%m', 'now')
-    """, session["user_id"])[0]['total']
-    
-    current_spending += amount
-    
-    budget = db.execute("""
-        SELECT amount
+    user_id = session["user_id"]
+    monthly_budget = db.execute("""
+        SELECT amount, period, start_date
         FROM budgets
         WHERE user_id = ?
         AND period = 'MONTHLY'
         AND is_active = 1
-    """, session["user_id"])
+    """, user_id)
     
-    if budget:
-        budget_amount = budget[0]['amount']
-        percentage = (current_spending / budget_amount) * 100
+    if monthly_budget:
+        budget_amount = monthly_budget[0]['amount']
+        
+        current_spending = db.execute("""
+            SELECT COALESCE(SUM(amount), 0) as total
+            FROM transactions
+            WHERE user_id = ?
+            AND type = 'EXPENSE'
+            AND strftime('%Y-%m', time) = strftime('%Y-%m', 'now')
+        """, user_id)
+        
+        total = current_spending[0]['total'] + amount
+        percentage = (total / budget_amount) * 100
+        remaining = budget_amount - total
         
         if percentage >= 100:
-            flash(f"⚠️ Warning: You've exceeded your budget by ${current_spending - budget_amount:.2f}!", "warning")
-        elif percentage >= 80:
-            flash(f"⚠️ Warning: You've used {percentage:.0f}% of your budget!", "warning")
+            flash(f"🚨 Budget Alert: You've exceeded your monthly budget by ${abs(remaining):.2f}!", "danger")
+        elif percentage >= 90:
+            flash(f"⚠️ Budget Warning: You've used {percentage:.0f}% of your monthly budget. Only ${remaining:.2f} remaining!", "warning")
+        elif percentage >= 75:
+            flash(f"💡 Budget Notice: You've used {percentage:.0f}% of your monthly budget (${remaining:.2f} left).", "info")
+        
+        return
+    
+    weekly_budget = db.execute("""
+        SELECT amount, period
+        FROM budgets
+        WHERE user_id = ?
+        AND period = 'WEEKLY'
+        AND is_active = 1
+    """, user_id)
+    
+    if weekly_budget:
+        budget_amount = weekly_budget[0]['amount']
+        
+        current_spending = db.execute("""
+            SELECT COALESCE(SUM(amount), 0) as total
+            FROM transactions
+            WHERE user_id = ?
+            AND type = 'EXPENSE'
+            AND strftime('%Y-%W', time) = strftime('%Y-%W', 'now')
+        """, user_id)
+        
+        total = current_spending[0]['total'] + amount
+        percentage = (total / budget_amount) * 100
+        remaining = budget_amount - total
+        
+        if percentage >= 100:
+            flash(f"🚨 Budget Alert: You've exceeded your weekly budget by ${abs(remaining):.2f}!", "danger")
+        elif percentage >= 90:
+            flash(f"⚠️ Budget Warning: You've used {percentage:.0f}% of your weekly budget. Only ${remaining:.2f} remaining!", "warning")
+        elif percentage >= 75:
+            flash(f"💡 Budget Notice: You've used {percentage:.0f}% of your weekly budget (${remaining:.2f} left).", "info")
+        
+        return
+    
+    yearly_budget = db.execute("""
+        SELECT amount, period
+        FROM budgets
+        WHERE user_id = ?
+        AND period = 'YEARLY'
+        AND is_active = 1
+    """, user_id)
+    
+    if yearly_budget:
+        budget_amount = yearly_budget[0]['amount']
+        
+        current_spending = db.execute("""
+            SELECT COALESCE(SUM(amount), 0) as total
+            FROM transactions
+            WHERE user_id = ?
+            AND type = 'EXPENSE'
+            AND strftime('%Y', time) = strftime('%Y', 'now')
+        """, user_id)
+        
+        total = current_spending[0]['total'] + amount
+        percentage = (total / budget_amount) * 100
+        remaining = budget_amount - total
+        
+        if percentage >= 100:
+            flash(f"🚨 Budget Alert: You've exceeded your yearly budget by ${abs(remaining):.2f}!", "danger")
+        elif percentage >= 90:
+            flash(f"⚠️ Budget Warning: You've used {percentage:.0f}% of your yearly budget. Only ${remaining:.2f} remaining!", "warning")
+        elif percentage >= 75:
+            flash(f"💡 Budget Notice: You've used {percentage:.0f}% of your yearly budget (${remaining:.2f} left).", "info")

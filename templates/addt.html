@@ -56,13 +56,17 @@
                         <select class="form-select" name="category" id="category" required>
                             <option value="">Select a category</option>
                             <optgroup label="Expense Categories" id="expenseCategories">
-                                {% for category in categories.EXPENSE %}
-                                <option value="{{ category['name'] }}">{{ category['icon'] }} {{ category['name'] }}</option>
+                                {% for category in categories %}
+                                {% if category['type'] == 'EXPENSE' %}
+                                <option value="{{ category['name'] }}">{{ category['name'] }}</option>
+                                {% endif %}
                                 {% endfor %}
                             </optgroup>
                             <optgroup label="Income Categories" id="incomeCategories" style="display: none;">
-                                {% for category in categories.INCOME %}
-                                <option value="{{ category['name'] }}">{{ category['icon'] }} {{ category['name'] }}</option>
+                                {% for category in categories %}
+                                {% if category['type'] == 'INCOME' %}
+                                <option value="{{ category['name'] }}">{{ category['name'] }}</option>
+                                {% endif %}
                                 {% endfor %}
                             </optgroup>
                         </select>

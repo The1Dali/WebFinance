@@ -74,6 +74,7 @@ def add_transaction():
         is_recurring = 1 if request.form.get("is_recurring") else 0
         recurring_frequency = request.form.get("recurring_frequency")
         recurring_end_date = request.form.get("recurring_end_date")
+        transaction_date = request.form.get("date")
         
         if not name:
             flash("Transaction name is required", "error")
@@ -99,13 +100,22 @@ def add_transaction():
         if not category:
             flash("Category is required", "error")
             return render_template("addt.html", categories=categories)
+
+        valid_category = db.execute("SELECT * FROM categories WHERE name = ? AND type = ?", category, transaction_type)
+        if not valid_category:
+            flash("Invalid category for transaction type", "error")
+            return render_template("addt.html", categories=categories)
+
+        if not transaction_date:
+            flash("Date is required", "error")
+            return render_template("addt.html", categories=categories)
         
         if is_recurring:
             if not recurring_frequency or recurring_frequency not in ['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY']:
                 flash("Invalid recurring frequency", "error")
                 return render_template("addt.html", categories=categories)
         
-
+        
         receipt_path = None
         if 'receipt' in request.files:
             file = request.files['receipt']
@@ -120,21 +130,26 @@ def add_transaction():
                 
                 timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
                 filename = secure_filename(file.filename)
-                unique_filename = f"{session['user_id']}_{timestamp}_{filename}"
+                unique_filename = f"{user_id}_{timestamp}_{filename}"
                 
                 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
                 
                 filepath = os.path.join(UPLOAD_FOLDER, unique_filename)
                 file.save(filepath)
-                receipt_path = f"Database/Receipts/{unique_filename}"
+                
+                receipt_path = filepath
+
+                
         
         try:
             if is_recurring:
                 next_occurrence = datetime.now().date()
                 
-                recurring_id = db.execute("""INSERT INTO recurring_transactions 
+                recurring_id = db.execute("""
+                    INSERT INTO recurring_transactions 
                     (user_id, name, amount, type, category, frequency, start_date, end_date, next_occurrence, notes)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""", 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, 
                     user_id, 
                     name, 
                     amount, 
@@ -144,11 +159,14 @@ def add_transaction():
                     datetime.now().date(),
                     recurring_end_date if recurring_end_date else None,
                     next_occurrence,
-                    notes)
+                    notes
+                )
                 
-                db.execute("""INSERT INTO transactions 
-                    (user_id, name, amount, type, category, notes, receipt_path, recurring_template_id)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)""", 
+                db.execute("""
+                    INSERT INTO transactions 
+                    (user_id, name, amount, type, category, notes, receipt_path, is_recurring, recurring_template_id, time)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, 
                     user_id, 
                     name, 
                     amount, 
@@ -156,14 +174,18 @@ def add_transaction():
                     category, 
                     notes, 
                     receipt_path,
-                    recurring_id)
+                    1,
+                    recurring_id,
+                    transaction_date
+                )
                 
                 flash(f"Recurring {transaction_type.lower()} added successfully!", "success")
             else:
-
-                db.execute("""INSERT INTO transactions 
-                    (user_id, name, amount, type, category, notes, receipt_path, is_recurring)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)""", 
+                db.execute("""
+                    INSERT INTO transactions 
+                    (user_id, name, amount, type, category, notes, receipt_path, is_recurring, time)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, 
                     user_id, 
                     name, 
                     amount, 
@@ -171,19 +193,21 @@ def add_transaction():
                     category, 
                     notes, 
                     receipt_path,
-                    0
+                    0,
+                    transaction_date
                 )
+
                 flash(f"{transaction_type.capitalize()} added successfully!", "success")
             
             if transaction_type == "EXPENSE":
-                check_budget_warning(category, amount)
+                check_budget_warning(user_id, amount)
             
             return redirect("/")
             
         except Exception as e:
             # Clean up uploaded file if database insert fails
-            if receipt_path and os.path.exists(os.path.join('static', receipt_path)):
-                os.remove(os.path.join('static', receipt_path))
+            if receipt_path and os.path.exists(receipt_path):
+                os.remove(receipt_path)
             
             flash(f"Error adding transaction: {str(e)}", "error")
             return render_template("addt.html", categories=categories)
@@ -258,6 +282,25 @@ def logout():
     session.clear()
     # Redirect user to login form
     return redirect("/")
+
+@app.route("/receipt/<int:transaction_id>")
+@login_required
+def view_receipt(transaction_id):
+    """Serve receipt file with authentication"""
+    from flask import send_file, abort
+    
+    # Verify user owns this transaction
+    transaction = db.execute("""SELECT receipt_path FROM transactions WHERE id = ? AND user_id = ?""", transaction_id, session["user_id"])
+    
+    if not transaction or not transaction[0]['receipt_path']:
+        abort(404)
+    
+    receipt_path = transaction[0]['receipt_path']
+    
+    if not os.path.exists(receipt_path):
+        abort(404)
+    
+    return send_file(receipt_path)
 
 
 @app.route("/register", methods=["GET", "POST"])
