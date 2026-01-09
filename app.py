@@ -1,5 +1,6 @@
+import json
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from cs50 import SQL
 from flask import Flask, flash, redirect, render_template, request, session
@@ -40,22 +41,143 @@ def after_request(response):
 @login_required
 def index():
     """Show dashboard"""
-    return apg("TODO", 500)
-    """
     user_id = session["user_id"]
-    cash = db.execute("SELECT cash FROM users WHERE id = ?", user_id)[0]["cash"]
-    data = db.execute(SELECT symbol, SUM(CASE WHEN type = 'BUY' THEN shares ELSE -shares END) as total_shares
-        FROM transactions WHERE user_id = ? GROUP BY symbol HAVING total_shares > 0, user_id)
-    total = cash
-    for holding in data:
-        holding["price"] = lookup(holding["symbol"])["price"]
-        holding["total"] = holding["price"] * holding["total_shares"]
-        total += holding["total"]
-        holding["price"] = usd(holding["price"])
-        holding["total"] = usd(holding["total"])
 
-    render_template("index.html", cash=usd(cash), data=data, total=usd(total))
-    """
+    today = datetime.now()
+    week_ago = today - timedelta(days=7)
+    month_ago = today - timedelta(days=30)
+    year_ago = today - timedelta(days=365)
+    
+    weekly_income = db.execute("""
+        SELECT COALESCE(SUM(amount), 0) as total
+        FROM transactions
+        WHERE user_id = ? AND type = 'INCOME'
+        AND time >= ?
+    """, user_id, week_ago)[0]['total']
+    
+    weekly_expense = db.execute("""
+        SELECT COALESCE(SUM(amount), 0) as total
+        FROM transactions
+        WHERE user_id = ? AND type = 'EXPENSE'
+        AND time >= ?
+    """, user_id, week_ago)[0]['total']
+    
+    monthly_income = db.execute("""
+        SELECT COALESCE(SUM(amount), 0) as total
+        FROM transactions
+        WHERE user_id = ? AND type = 'INCOME'
+        AND time >= ?
+    """, user_id, month_ago)[0]['total']
+    
+    monthly_expense = db.execute("""
+        SELECT COALESCE(SUM(amount), 0) as total
+        FROM transactions
+        WHERE user_id = ? AND type = 'EXPENSE'
+        AND time >= ?
+    """, user_id, month_ago)[0]['total']
+    
+    yearly_income = db.execute("""
+        SELECT COALESCE(SUM(amount), 0) as total
+        FROM transactions
+        WHERE user_id = ? AND type = 'INCOME'
+        AND time >= ?
+    """, user_id, year_ago)[0]['total']
+    
+    yearly_expense = db.execute("""
+        SELECT COALESCE(SUM(amount), 0) as total
+        FROM transactions
+        WHERE user_id = ? AND type = 'EXPENSE'
+        AND time >= ?
+    """, user_id, year_ago)[0]['total']
+    
+    income_by_category = db.execute("""
+        SELECT category, SUM(amount) as total
+        FROM transactions
+        WHERE user_id = ? AND type = 'INCOME'
+        GROUP BY category
+        ORDER BY total DESC
+    """, user_id)
+    
+    # Prepare data for Chart.js
+    income_labels = [row['category'] for row in income_by_category]
+    income_values = [float(row['total']) for row in income_by_category]
+    
+    expense_by_category = db.execute("""
+        SELECT category, SUM(amount) as total
+        FROM transactions
+        WHERE user_id = ? AND type = 'EXPENSE'
+        GROUP BY category
+        ORDER BY total DESC
+    """, user_id)
+    
+    # Prepare data for Chart.js
+    expense_labels = [row['category'] for row in expense_by_category]
+    expense_values = [float(row['total']) for row in expense_by_category]
+    
+
+    recent_transactions = db.execute("""
+        SELECT id, name, amount, type, category, time, receipt_path
+        FROM transactions
+        WHERE user_id = ?
+        ORDER BY time DESC
+        LIMIT 10
+    """, user_id)
+    
+    for transaction in recent_transactions:
+        transaction['formatted_amount'] = f"${transaction['amount']:.2f}"
+        transaction['formatted_date'] = datetime.fromisoformat(str(transaction['time'])).strftime('%Y-%m-%d')
+        
+
+    budget = db.execute("""
+        SELECT amount FROM budgets
+        WHERE user_id = ? AND period = 'MONTHLY' AND is_active = 1
+    """, user_id)
+    
+    budget_data = None
+    if budget:
+        budget_amount = budget[0]['amount']
+        spent = monthly_expense
+        remaining = budget_amount - spent
+        percentage = (spent / budget_amount * 100) if budget_amount > 0 else 0
+        
+        budget_data = {
+            'total': budget_amount,
+            'spent': spent,
+            'remaining': remaining,
+            'percentage': round(percentage, 1)
+        }
+
+    total_balance = yearly_income - yearly_expense
+    
+    summary = {
+        'balance': total_balance,
+        'monthly_income': monthly_income,
+        'monthly_expense': monthly_expense,
+        'weekly_income': weekly_income,
+        'weekly_expense': weekly_expense
+    }
+
+    return render_template("index.html",
+        histogram_data=json.dumps
+        ({
+            'labels': ['Weekly', 'Monthly', 'Yearly'],
+            'income': [float(weekly_income), float(monthly_income), float(yearly_income)],
+            'expenses': [float(weekly_expense), float(monthly_expense), float(yearly_expense)]
+        }),
+        income_chart_data=json.dumps
+        ({
+            'labels': income_labels,
+            'values': income_values
+        }),
+        expense_chart_data=json.dumps
+        ({
+            'labels': expense_labels,
+            'values': expense_values
+        }),
+        transactions=recent_transactions,
+        summary=summary,
+        budget=budget_data)
+
 
 
 @app.route("/add", methods=["GET", "POST"])
@@ -220,21 +342,7 @@ def add_transaction():
 @login_required
 def history():
     """Show history of transactions"""
-    SORTS = ["symbol", "shares", "price", "time", "type"]
-    user_id = session["user_id"]
-    sort_by = request.args.get("sort", "time")
-    order = request.args.get("order", "desc")
-    if sort_by not in SORTS:
-        sort_by = "time"
-    if order not in ["asc", "desc"]:
-        order = "desc"
-    query = f"""SELECT symbol, shares, price, type, time FROM transactions WHERE user_id = ? ORDER BY {sort_by} {order.upper()}"""
-    data = db.execute(query, user_id)
-    for holding in data:
-        holding["price"] = usd(holding["price"])
-
-    return render_template("history.html", data=data, sort_by=sort_by, order=order)
-
+    return apg("TODO", 500)
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -326,46 +434,14 @@ def register():
     
 
 
-@app.route("/transaction", methods=["GET", "POST"])
+@app.route("/transactions")
 @login_required
-def sell():
+def transactions():
     """Sell shares of stock"""
-    user_id = session["user_id"]
-    data = db.execute("""SELECT symbol, SUM(CASE WHEN type = 'BUY' THEN shares ELSE -shares END) as total_shares
-                      FROM transactions WHERE user_id = ? GROUP BY symbol HAVING total_shares > 0""", user_id)
-    symbols = [ d["symbol"] for d in data]
-    shares = [ d["total_shares"] for d in data]
-    if request.method == "POST":
-        if not request.form.get("symbol") or request.form.get("symbol")=="Symbol":
-            return apology("Please choose a symbol to sell", 400)
-        elif not request.form.get("shares"):
-            return apology("Please input the amount of shares to sell", 400)
-        try:
-            share = int(request.form.get("shares"))
-            if share <= 0:
-                return apology("Shares need to be a positive integer", 400)
-            symbol = request.form.get("symbol")
-        except(TypeError, ValueError):
-            return apology("Shares need to be a positive integer", 400)
-        owned_shares = next((d["total_shares"] for d in data if d["symbol"] == symbol), 0)
+    return apg("TODO", 500)
 
-        if symbol in symbols:
-            if share <= owned_shares:
-                cash = db.execute("SELECT cash FROM users WHERE id = ?", user_id)[0]["cash"]
-                price = lookup(symbol)["price"]
-                newbalance = cash + price * share
-                try:
-                    db.execute("UPDATE users SET cash = ? WHERE id = ?", newbalance, user_id)
-                    db.execute("INSERT INTO transactions (user_id, symbol, shares, price, type) VALUES (?, ?, ?, ?, ?)", user_id, symbol, share, price, "SELL")
-                    flash("Sold!", "success")
-                    return redirect("/")
-                except Exception:
-                    return apology("Transaction Failed", 500)
-            else:
-                return apology("Don't own specified shares", 400)
-                
-        else:
-            return apology("Invalid Symbol", 400)
-
-    else:
-        return render_template("sell.html", symbols=symbols)
+@app.route("/statistics")
+@login_required
+def statistics():
+    """Display extensive income/expense statistics"""
+    return apg("TODO", 500)

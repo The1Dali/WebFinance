@@ -5,112 +5,179 @@
 {% endblock %}
 
 {% block main %}
-    <!-- Histogram -->
-    <section class="mb-5 container">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h4 class="mb-0">Statistics</h4>
-            <a href="statistic.html" class="btn btn-outline-warning">View All Statistics</a>
-        </div>
-        <div class="card">
-            <div class="card-body">
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <h6 class="text-center mb-3">Income vs Expenses</h6>
-                        <canvas id="histogramChart1"></canvas>
+    <!-- Summary Cards -->
+    <section class="container mb-5">
+        <div class="row g-3">
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h6 class="text-muted">Total Balance</h6>
+                        <h3 class="{% if summary.balance >= 0 %}text-success{% else %}text-danger{% endif %}">
+                            ${{ "%.2f"|format(summary.balance) }}
+                        </h3>
                     </div>
-                    <div class="col-md-3">
-                        <h6 class="text-center mb-3">Income by Category</h6>
-                        <canvas id="incomePieChart1"></canvas>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h6 class="text-muted">Monthly Income</h6>
+                        <h3 class="text-success">${{ "%.2f"|format(summary.monthly_income) }}</h3>
                     </div>
-                    <div class="col-md-3">
-                        <h6 class="text-center mb-3">Expenses by Category</h6>
-                        <canvas id="expensesPieChart1"></canvas>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h6 class="text-muted">Monthly Expenses</h6>
+                        <h3 class="text-danger">${{ "%.2f"|format(summary.monthly_expense) }}</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h6 class="text-muted">This Week</h6>
+                        <h3 class="{% if (summary.weekly_income - summary.weekly_expense) >= 0 %}text-success{% else %}text-danger{% endif %}">
+                            ${{ "%.2f"|format(summary.weekly_income - summary.weekly_expense) }}
+                        </h3>
                     </div>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Transactions -->
-    <section class="container">
+    <!-- Budget Progress (if set) -->
+    {% if budget %}
+    <section class="container mb-5">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="mb-0">Monthly Budget</h6>
+                    <span class="badge {% if budget.percentage >= 100 %}bg-danger{% elif budget.percentage >= 75 %}bg-warning{% else %}bg-success{% endif %}">
+                        {{ budget.percentage }}%
+                    </span>
+                </div>
+                <div class="progress mb-2" style="height: 25px;">
+                    <div class="progress-bar {% if budget.percentage >= 100 %}bg-danger{% elif budget.percentage >= 75 %}bg-warning{% else %}bg-success{% endif %}" 
+                         role="progressbar" 
+                         style="width: {{ budget.percentage if budget.percentage <= 100 else 100 }}%">
+                        ${{ "%.2f"|format(budget.spent) }} / ${{ "%.2f"|format(budget.total) }}
+                    </div>
+                </div>
+                <small class="text-muted">
+                    {% if budget.remaining >= 0 %}
+                        ${{ "%.2f"|format(budget.remaining) }} remaining
+                    {% else %}
+                        ${{ "%.2f"|format(budget.remaining|abs) }} over budget
+                    {% endif %}
+                </small>
+            </div>
+        </div>
+    </section>
+    {% endif %}
+
+    <!-- Charts -->
+    <section class="mb-5 container">
         <div class="d-flex justify-content-between align-items-center mb-3">
-            <h4 class="mb-0">Transaction List</h4>
-            <a class="btn btn-outline-warning" href="transaction.html">View All Transactions</a>
+            <h4 class="mb-0">Statistics</h4>
+            <a href="/statistics" class="btn btn-outline-primary">View All Statistics</a>
         </div>
-        <div class="d-flex justify-content-end mb-2">
-            <select id="sortSelect" class="form-select w-auto">
-                <option value="date-desc">Sort By Descending Date</option>
-                <option value="date-asc">Sort By Ascending Date</option>
-                <option value="amount-desc">Sort By Descending Amount</option>
-                <option value="amount-asc">Sort By Ascending Amount</option>
-            </select>
+        <div class="card">
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <h6 class="text-center mb-3">Income vs Expenses</h6>
+                        <canvas id="histogramChart"></canvas>
+                    </div>
+                    <div class="col-md-3">
+                        <h6 class="text-center mb-3">Income by Category</h6>
+                        <canvas id="incomePieChart"></canvas>
+                    </div>
+                    <div class="col-md-3">
+                        <h6 class="text-center mb-3">Expenses by Category</h6>
+                        <canvas id="expensesPieChart"></canvas>
+                    </div>
+                </div>
+            </div>
         </div>
-        <table class="table table-striped table-hover">
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Amount</th>
-                    <th>Category</th>
-                    <th>Date</th>
-                </tr>
-            </thead>
-            <tbody id="transactionList">
-                <!-- Sample transactions -->
-                <tr data-date="2023-12-10" data-amount="-200">
-                    <td>Groceries</td>
-                    <td>-200$</td>
-                    <td>Food</td>
-                    <td>2023-12-10</td>
-                </tr>
-                <tr data-date="2023-12-05" data-amount="1500">
-                    <td>Salary</td>
-                    <td>+1500$</td>
-                    <td>Income</td>
-                    <td>2023-12-05</td>
-                </tr>
-                <tr data-date="2023-11-30" data-amount="-100">
-                    <td>Utilities</td>
-                    <td>-100$</td>
-                    <td>Bills</td>
-                    <td>2023-11-30</td>
-                </tr>
-                <tr data-date="2023-11-25" data-amount="500">
-                    <td>Freelance</td>
-                    <td>+500$</td>
-                    <td>Income</td>
-                    <td>2023-11-25</td>
-                </tr>
-            </tbody>
-        </table>
     </section>
 
-    <!-- Add Button -->
-    <a href="addt.html" class="btn btn-warning position-fixed bottom-0 end-0 m-3 rounded-circle addb">
-        <span 28px;>+</span>
-    </a>
-    <script>
-    // Load profile section
-    fetch('profile.html')
-    .then(response => response.text())
-    .then(data => {
-        document.getElementById('profile-container').innerHTML = data;
-    });
+    <!-- Recent Transactions -->
+    <section class="container mb-5">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4 class="mb-0">Recent Transactions</h4>
+            <a class="btn btn-outline-primary" href="/transactions">View All</a>
+        </div>
+        {% if transactions %}
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Amount</th>
+                        <th>Category</th>
+                        <th>Date</th>
+                        <th>Receipt</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for transaction in transactions %}
+                    <tr>
+                        <td>{{ transaction.name }}</td>
+                        <td class="{% if transaction.type == 'INCOME' %}text-success{% else %}text-danger{% endif %}">
+                            {% if transaction.type == 'INCOME' %}+{% else %}-{% endif %}{{ transaction.formatted_amount }}
+                        </td>
+                        <td><span class="badge bg-secondary">{{ transaction.category }}</span></td>
+                        <td>{{ transaction.formatted_date }}</td>
+                        <td>
+                            {% if transaction.receipt_path %}
+                                <a href="{{ url_for('view_receipt', transaction_id=transaction.id) }}" target="_blank">
+                                    <i class="bi bi-paperclip"></i>
+                                </a>
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="alert alert-info text-center">
+            <i class="bi bi-info-circle me-2"></i>
+            No transactions yet.
+        </div>
+        {% endif %}
+    </section>
 
-    // Histogram Chart
-        const ctx = document.getElementById('histogramChart1').getContext('2d');
-    new Chart(ctx, {
+    <!-- Floating Add Button -->
+    <a href="/add" class="btn btn-primary position-fixed bottom-0 end-0 m-4 rounded-circle shadow addb">
+        <i class="bi bi-plus-lg"></i>
+    </a>
+
+    <script>
+    // Parse data from Flask (safe JSON injection)
+    const histogramData = {{ histogram_data|safe }};
+    const incomeChartData = {{ income_chart_data|safe }};
+    const expenseChartData = {{ expense_chart_data|safe }};
+
+    // Income vs Expenses Bar Chart
+    const histogramCtx = document.getElementById('histogramChart').getContext('2d');
+    new Chart(histogramCtx, {
         type: 'bar',
         data: {
-            labels: ['Weekly', 'Monthly', 'Annual'],
+            labels: histogramData.labels,
             datasets: [{
                 label: 'Income',
-                data: [1000, 4000, 48000],
+                data: histogramData.income,
                 backgroundColor: '#28a745',
                 borderColor: '#1e7e34',
                 borderWidth: 1
             }, {
                 label: 'Expenses',
-                data: [800, 3200, 38400],
+                data: histogramData.expenses,
                 backgroundColor: '#dc3545',
                 borderColor: '#c82333',
                 borderWidth: 1
@@ -121,83 +188,109 @@
             maintainAspectRatio: true,
             scales: {
                 y: {
-                    beginAtZero: true
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return '$' + value.toLocaleString();
+                        }
+                    }
                 }
             },
             plugins: {
                 legend: {
                     position: 'bottom'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ': $' + context.parsed.y.toLocaleString();
+                        }
+                    }
                 }
             }
         }
     });
 
-    // Income Pie Chart 
-    const incomeCtx = document.getElementById('incomePieChart1').getContext('2d');
-    new Chart(incomeCtx, {
-        type: 'pie',
-        data: {
-            labels: ['Salary', 'Freelance', 'Investment', 'Other'],
-            datasets: [{
-                data: [60, 25, 10, 5],
-                backgroundColor: ['#28a745', '#20c997', '#17a2b8', '#6c757d'],
-                borderWidth: 2
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: {
-                    position: 'bottom'
+    // Income Pie Chart
+    if (incomeChartData.labels.length > 0) {
+        const incomeCtx = document.getElementById('incomePieChart').getContext('2d');
+        new Chart(incomeCtx, {
+            type: 'pie',
+            data: {
+                labels: incomeChartData.labels,
+                datasets: [{
+                    data: incomeChartData.values,
+                    backgroundColor: [
+                        '#28a745', '#20c997', '#17a2b8', '#6610f2', 
+                        '#6c757d', '#fd7e14', '#e83e8c'
+                    ],
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = '$' + context.parsed.toLocaleString();
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = ((context.parsed / total) * 100).toFixed(1);
+                                return label + ': ' + value + ' (' + percentage + '%)';
+                            }
+                        }
+                    }
                 }
-            }
-        }
-    });
-
-    // Expenses Pie Chart 
-    const expensesCtx = document.getElementById('expensesPieChart1').getContext('2d');
-    new Chart(expensesCtx, {
-        type: 'pie',
-        data: {
-            labels: ['Food', 'Bills', 'Transport', 'Entertainment', 'Other'],
-            datasets: [{
-                data: [35, 25, 15, 15, 10],
-                backgroundColor: ['#dc3545', '#fd7e14', '#ffc107', '#e83e8c', '#6c757d'],
-                borderWidth: 2
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: {
-                    position: 'bottom'
-                }
-            }
-        }
-    });
-
-
-    // Sorting Functionality
-    const sortSelect = document.getElementById('sortSelect');
-    const transactionList = document.getElementById('transactionList');
-    const rows = Array.from(transactionList.rows);
-
-    sortSelect.addEventListener('change', () => {
-        const sortBy = sortSelect.value;
-        rows.sort((a, b) => {
-            if (sortBy === 'date-desc') {
-                return new Date(b.dataset.date) - new Date(a.dataset.date);
-            } else if (sortBy === 'date-asc') {
-                return new Date(a.dataset.date) - new Date(b.dataset.date);
-            } else if (sortBy === 'amount-desc') {
-                return parseFloat(b.dataset.amount) - parseFloat(a.dataset.amount);
-            } else if (sortBy === 'amount-asc') {
-                return parseFloat(a.dataset.amount) - parseFloat(b.dataset.amount);
             }
         });
-        transactionList.innerHTML = '';
-        rows.forEach(row => transactionList.appendChild(row));
-    });
+    } else {
+        document.getElementById('incomePieChart').parentElement.innerHTML = 
+            '<p class="text-center text-muted">No income data yet</p>';
+    }
 
+    // Expenses Pie Chart
+    if (expenseChartData.labels.length > 0) {
+        const expensesCtx = document.getElementById('expensesPieChart').getContext('2d');
+        new Chart(expensesCtx, {
+            type: 'pie',
+            data: {
+                labels: expenseChartData.labels,
+                datasets: [{
+                    data: expenseChartData.values,
+                    backgroundColor: [
+                        '#dc3545', '#fd7e14', '#ffc107', '#e83e8c', 
+                        '#6c757d', '#f8f9fa', '#343a40'
+                    ],
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = '$' + context.parsed.toLocaleString();
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = ((context.parsed / total) * 100).toFixed(1);
+                                return label + ': ' + value + ' (' + percentage + '%)';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    } else {
+        document.getElementById('expensesPieChart').parentElement.innerHTML = 
+            '<p class="text-center text-muted">No expense data yet</p>';
+    }
     </script>
 {% endblock %}
