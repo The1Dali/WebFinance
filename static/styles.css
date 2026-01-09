@@ -1,11 +1,11 @@
 .addb
 {
-    width: 56px; 
-    height: 56px; 
+    width: 30px; 
+    height: 30px; 
     display: flex; 
     align-items: center; 
     justify-content: center;
-    font-size: 28px;
+    font-size: 24px;
 }
 .canvasb
 {

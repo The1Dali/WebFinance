@@ -602,4 +602,4 @@ def edit_transaction(transaction_id):
         return redirect("/transactions")
     
     categories = db.execute("SELECT * FROM categories WHERE type = ?", transaction['type'])
-    return render_template("edit_transaction.html", transaction=transaction, categories=categories)
+    return render_template("editt.html", transaction=transaction, categories=categories)
