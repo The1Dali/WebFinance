@@ -1,0 +1,119 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Edit Transaction
+{% endblock %}
+
+{% block main %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Edit Transaction</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="/transaction/edit/{{ transaction.id }}">
+                        <!-- Transaction Type (Display only) -->
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Type</label>
+                            <div class="alert {% if transaction.type == 'INCOME' %}alert-success{% else %}alert-danger{% endif %} mb-0">
+                                {% if transaction.type == 'INCOME' %}
+                                    <i class="bi bi-arrow-up-circle"></i> Income
+                                {% else %}
+                                    <i class="bi bi-arrow-down-circle"></i> Expense
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Name -->
+                        <div class="mb-3">
+                            <label for="name" class="form-label fw-bold">Name *</label>
+                            <input type="text" 
+                                   name="name" 
+                                   class="form-control" 
+                                   id="name" 
+                                   value="{{ transaction.name }}"
+                                   required>
+                        </div>
+
+                        <!-- Amount -->
+                        <div class="mb-3">
+                            <label for="amount" class="form-label fw-bold">Amount *</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" 
+                                       name="amount" 
+                                       class="form-control" 
+                                       id="amount" 
+                                       value="{{ transaction.amount }}"
+                                       step="0.01"
+                                       min="0.01"
+                                       required>
+                            </div>
+                        </div>
+
+                        <!-- Category -->
+                        <div class="mb-3">
+                            <label for="category" class="form-label fw-bold">Category *</label>
+                            <select class="form-select" name="category" id="category" required>
+                                {% for cat in categories %}
+                                <option value="{{ cat.name }}" {% if cat.name == transaction.category %}selected{% endif %}>
+                                    {{ cat.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Notes -->
+                        <div class="mb-3">
+                            <label for="notes" class="form-label fw-bold">Notes</label>
+                            <textarea class="form-control" 
+                                      name="notes" 
+                                      id="notes" 
+                                      rows="3">{{ transaction.notes or '' }}</textarea>
+                        </div>
+
+                        <!-- Receipt (Display only) -->
+                        {% if transaction.receipt_path %}
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Receipt</label>
+                            <div>
+                                <a href="{{ url_for('view_receipt', transaction_id=transaction.id) }}" 
+                                   target="_blank" 
+                                   class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-paperclip"></i> View Receipt
+                                </a>
+                                <small class="text-muted d-block mt-1">
+                                    To change the receipt, delete this transaction and create a new one.
+                                </small>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Date (Display only) -->
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Date</label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   value="{{ transaction.time }}" 
+                                   readonly>
+                            <small class="text-muted">Transaction date cannot be changed</small>
+                        </div>
+
+                        <!-- Buttons -->
+                        <div class="d-flex gap-2 justify-content-end">
+                            <a href="/transactions" class="btn btn-outline-secondary">
+                                <i class="bi bi-x-circle"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle"></i> Save Changes
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

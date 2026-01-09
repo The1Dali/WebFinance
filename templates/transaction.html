@@ -1,125 +1,349 @@
-<!DOCTYPE html>
+{% extends "layout.html" %}
 
-<html lang="en" data-bs-theme="dark">
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>Financial Tracker</title>
-        <link href="favicon.jpg" rel="icon">
-        <link href="styles.css" rel="stylesheet">
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-        <script src="profile.js"></script>
-    </head>
-    <body>
-        <div id="profile-container">
+{% block title %}
+    Transactions
+{% endblock %}
 
+{% block main %}
+<div class="container y-4">
+    <!-- Header -->
+    <div class="mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <a href="/" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Back
+            </a>
+            <a href="/add" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> Add Transaction
+            </a>
         </div>
+        <h2 class="mb-0">All Transactions</h2>
+    </div>
 
-        <!-- Transactions -->
-        <section class="container">
-            <a class="btn btn-outline-warning mb-3" href="index.html">Back</a>
-            <div class="d-flex justify-content-between align-items-center mb-2">
-                <h4 class="mb-0">Transaction List</h4>
-                <select id="sortSelect" class="form-select w-auto align-items-center">
-                    <option value="date-desc">Sort By Descending Date</option>
-                    <option value="date-asc">Sort By Ascending Date</option>
-                    <option value="amount-desc">Sort By Descending Amount</option>
-                    <option value="amount-asc">Sort By Ascending Amount</option>
-                </select>
+    <!-- Summary Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <small class="text-muted">Total Income</small>
+                    <h4 class="text-success mb-0">${{ "%.2f"|format(summary.total_income or 0) }}</h4>
+                </div>
             </div>
-            <table class="table table-striped table-hover">
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <small class="text-muted">Total Expenses</small>
+                    <h4 class="text-danger mb-0">${{ "%.2f"|format(summary.total_expense or 0) }}</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <small class="text-muted">Net</small>
+                    <h4 class="{% if summary.net >= 0 %}text-success{% else %}text-danger{% endif %} mb-0">
+                        ${{ "%.2f"|format(summary.net or 0) }}
+                    </h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <small class="text-muted">Total Transactions</small>
+                    <h4 class="mb-0">{{ summary.count }}</h4>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters and Search -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="GET" action="/transactions" id="filterForm">
+                <div class="row g-3">
+                    <!-- Search -->
+                    <div class="col-md-2">
+                        <label class="form-label small">Search</label>
+                        <input type="text" name="search" class="form-control" 
+                               placeholder="Search transactions..." 
+                               value="{{ filters.search }}">
+                    </div>
+
+                    <!-- Type Filter -->
+                    <div class="col-md-2">
+                        <label class="form-label small">Type</label>
+                        <select name="type" class="form-select" onchange="document.getElementById('filterForm').submit()">
+                            <option value="all" {% if filters.type == 'all' %}selected{% endif %}>All</option>
+                            <option value="INCOME" {% if filters.type == 'INCOME' %}selected{% endif %}>Income</option>
+                            <option value="EXPENSE" {% if filters.type == 'EXPENSE' %}selected{% endif %}>Expenses</option>
+                        </select>
+                    </div>
+
+                    <!-- Category Filter -->
+                    <div class="col-md-2">
+                        <label class="form-label small">Category</label>
+                        <select name="category" class="form-select" onchange="document.getElementById('filterForm').submit()">
+                            <option value="all" {% if filters.category == 'all' %}selected{% endif %}>All</option>
+                            {% for cat in categories %}
+                            <option value="{{ cat.name }}" {% if filters.category == cat.name %}selected{% endif %}>
+                                {{ cat.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Date Range -->
+                    <div class="col-md-2">
+                        <label class="form-label small">Date Range</label>
+                        <select name="range" class="form-select" onchange="document.getElementById('filterForm').submit()">
+                            <option value="7" {% if filters.range == '7' %}selected{% endif %}>Last 7 days</option>
+                            <option value="30" {% if filters.range == '30' %}selected{% endif %}>Last 30 days</option>
+                            <option value="90" {% if filters.range == '90' %}selected{% endif %}>Last 90 days</option>
+                            <option value="365" {% if filters.range == '365' %}selected{% endif %}>Last year</option>
+                            <option value="all" {% if filters.range == 'all' %}selected{% endif %}>All time</option>
+                        </select>
+                    </div>
+
+                    <!-- Sort By -->
+                    <div class="col-md-2">
+                        <label class="form-label small">Sort By</label>
+                        <select name="sort" class="form-select" onchange="document.getElementById('filterForm').submit()">
+                            <option value="date-desc" {% if filters.sort == 'date-desc' %}selected{% endif %}>Newest First</option>
+                            <option value="date-asc" {% if filters.sort == 'date-asc' %}selected{% endif %}>Oldest First</option>
+                            <option value="amount-desc" {% if filters.sort == 'amount-desc' %}selected{% endif %}>Highest Amount</option>
+                            <option value="amount-asc" {% if filters.sort == 'amount-asc' %}selected{% endif %}>Lowest Amount</option>
+                        </select>
+                    </div>
+
+                    <!-- Transactions per page -->
+                    <div class="col-md-1">
+                        <label class="form-label small">Per Page</label>
+                        <select name="tppage" class="form-select" onchange="document.getElementById('filterForm').submit()">
+                            <option value="10" {% if filters.per_page == '10' %}selected{% endif %}>10</option>
+                            <option value="20" {% if filters.per_page == '20' %}selected{% endif %}>20</option>
+                            <option value="40" {% if filters.per_page == '40' %}selected{% endif %}>40</option>
+                            <option value="60" {% if filters.per_page == '60' %}selected{% endif %}>60</option>
+                            <option value="100" {% if filters.per_page == '100' %}selected{% endif %}>100</option>
+                        </select>
+                    </div>
+
+                    <!-- Buttons -->
+                    <div class="col-md-1 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-search"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Clear Filters -->
+                {% if filters.search or filters.type != 'all' or filters.category != 'all' or filters.range != '90' %}
+                <div class="mt-2">
+                    <a href="/transactions" class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-x-circle"></i> Clear Filters
+                    </a>
+                </div>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+
+    <!-- Transactions Table -->
+    {% if transactions %}
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
                 <thead>
                     <tr>
-                        <th>Name</th>
-                        <th>Amount</th>
-                        <th>Category</th>
-                        <th>Date</th>
+                        <th style="width: 5%"></th>
+                        <th style="width: 30%">Name</th>
+                        <th style="width: 15%">Amount</th>
+                        <th style="width: 15%">Category</th>
+                        <th style="width: 15%">Date</th>
+                        <th style="width: 10%">Receipt</th>
+                        <th style="width: 10%">Actions</th>
                     </tr>
                 </thead>
-                <tbody id="transactionList">
-                    <!-- Sample transactions -->
-                    <tr data-date="2025-12-10" data-amount="-200">
-                        <td>Groceries</td>
-                        <td>-200$</td>
-                        <td>Food</td>
-                        <td>2025-12-10</td>
+                <tbody>
+                    {% for transaction in transactions %}
+                    <tr>
+                        <!-- Type Icon -->
+                        <td class="text-center">
+                            {% if transaction.type == 'INCOME' %}
+                                <i class="bi bi-arrow-up-circle-fill text-success"></i>
+                            {% else %}
+                                <i class="bi bi-arrow-down-circle-fill text-danger"></i>
+                            {% endif %}
+                            {% if transaction.is_recurring %}
+                                <i class="bi bi-arrow-repeat text-info" title="Recurring"></i>
+                            {% endif %}
+                        </td>
+
+                        <!-- Name -->
+                        <td>
+                            <strong>{{ transaction.name }}</strong>
+                            {% if transaction.notes %}
+                            <br><small class="text-muted">{{ transaction.notes[:50] }}{% if transaction.notes|length > 50 %}...{% endif %}</small>
+                            {% endif %}
+                        </td>
+
+                        <!-- Amount -->
+                        <td>
+                            <span class="{% if transaction.type == 'INCOME' %}text-success{% else %}text-danger{% endif %} fw-bold">
+                                {% if transaction.type == 'INCOME' %}+{% else %}-{% endif %}{{ transaction.formatted_amount }}
+                            </span>
+                        </td>
+
+                        <!-- Category -->
+                        <td>
+                            <span class="badge bg-secondary">{{ transaction.category }}</span>
+                        </td>
+
+                        <!-- Date -->
+                        <td>
+                            <div>{{ transaction.formatted_date }}</div>
+                            <small class="text-muted">{{ transaction.formatted_time }}</small>
+                        </td>
+
+                        <!-- Receipt -->
+                        <td class="text-center">
+                            {% if transaction.receipt_path %}
+                                <a href="{{ url_for('view_receipt', transaction_id=transaction.id) }}" 
+                                   target="_blank" 
+                                   class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-paperclip"></i>
+                                </a>
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Actions -->
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <a href="/transaction/edit/{{ transaction.id }}" 
+                                   class="btn btn-outline-warning" 
+                                   title="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <button type="button" 
+                                        class="btn btn-outline-danger" 
+                                        onclick="confirmDelete({{ transaction.id }}, '{{ transaction.name }}')"
+                                        title="Delete">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </td>
                     </tr>
-                    <tr data-date="2025-12-05" data-amount="1500">
-                        <td>Salary</td>
-                        <td>+1500$</td>
-                        <td>Income</td>
-                        <td>2025-12-05</td>
-                    </tr>
-                    <tr data-date="2025-11-30" data-amount="-100">
-                        <td>Utilities</td>
-                        <td>-100$</td>
-                        <td>Bills</td>
-                        <td>2025-11-30</td>
-                    </tr>
-                    <tr data-date="2025-11-25" data-amount="500">
-                        <td>Freelance</td>
-                        <td>+500$</td>
-                        <td>Income</td>
-                        <td>2025-11-25</td>
-                    </tr>
-                    <tr data-date="2025-10-23" data-amount="400">
-                        <td>Gift</td>
-                        <td>+400$</td>
-                        <td>Income</td>
-                        <td>2025-10-23</td>
-                    </tr>
-                    <tr data-date="2025-12-02" data-amount="-150">
-                        <td>Fine</td>
-                        <td>-150$</td>
-                        <td>Fine</td>
-                        <td>2025-10-23</td>
-                    </tr>
-                    <tr data-date="2025-09-27" data-amount="-2000">
-                        <td>PC</td>
-                        <td>-2000$</td>
-                        <td>Purchase</td>
-                        <td>2025-09-27</td>
-                    </tr>
+                    {% endfor %}
                 </tbody>
             </table>
-        </section>
+        </div>
 
-        <!-- Add Button -->
-        <a href="addt.html" class="btn btn-warning position-fixed bottom-0 end-0 m-3 rounded-circle addb">
-            <span 28px;>+</span>
-        </a>
-        <script>
-        // Load profile section
-        fetch('profile.html')
-        .then(response => response.text())
-        .then(data => {
-            document.getElementById('profile-container').innerHTML = data;
-        });
-        
-        // Sorting Functionality
-        const sortSelect = document.getElementById('sortSelect');
-        const transactionList = document.getElementById('transactionList');
-        const rows = Array.from(transactionList.rows);
+        <!-- Pagination -->
+        {% if pagination.total > 1 %}
+        <div class="card-footer">
+            <nav>
+                <ul class="pagination pagination-sm mb-0 justify-content-center">
+                    <!-- Previous -->
+                    <li class="page-item {% if pagination.current == 1 %}disabled{% endif %}">
+                        <a class="page-link" href="?page={{ pagination.current - 1 }}&type={{ filters.type }}&category={{ filters.category }}&range={{ filters.range }}&sort={{ filters.sort }}&search={{ filters.search }}">
+                            Previous
+                        </a>
+                    </li>
 
-        sortSelect.addEventListener('change', () => {
-            const sortBy = sortSelect.value;
-            rows.sort((a, b) => {
-                if (sortBy === 'date-desc') {
-                    return new Date(b.dataset.date) - new Date(a.dataset.date);
-                } else if (sortBy === 'date-asc') {
-                    return new Date(a.dataset.date) - new Date(b.dataset.date);
-                } else if (sortBy === 'amount-desc') {
-                    return parseFloat(b.dataset.amount) - parseFloat(a.dataset.amount);
-                } else if (sortBy === 'amount-asc') {
-                    return parseFloat(a.dataset.amount) - parseFloat(b.dataset.amount);
-                }
-            });
-            transactionList.innerHTML = '';
-            rows.forEach(row => transactionList.appendChild(row));
-        });
-        </script>
-    </body>
-</html>
+                    <!-- Page Numbers -->
+                    {% for page_num in range(1, pagination.total + 1) %}
+                        {% if page_num == pagination.current %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ page_num }}</span>
+                            </li>
+                        {% elif page_num <= 3 or page_num > pagination.total - 3 or (page_num >= pagination.current - 1 and page_num <= pagination.current + 1) %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_num }}&type={{ filters.type }}&category={{ filters.category }}&range={{ filters.range }}&sort={{ filters.sort }}&search={{ filters.search }}">
+                                    {{ page_num }}
+                                </a>
+                            </li>
+                        {% elif page_num == 4 or page_num == pagination.total - 3 %}
+                            <li class="page-item disabled">
+                                <span class="page-link">...</span>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+
+                    <!-- Next -->
+                    <li class="page-item {% if pagination.current == pagination.total %}disabled{% endif %}">
+                        <a class="page-link" href="?page={{ pagination.current + 1 }}&type={{ filters.type }}&category={{ filters.category }}&range={{ filters.range }}&sort={{ filters.sort }}&search={{ filters.search }}">
+                            Next
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+            <div class="text-center mt-2">
+                <small class="text-muted">
+                    Showing {{ ((pagination.current - 1) * 20) + 1 }} - 
+                    {{ [pagination.current * 20, pagination.total_items]|min }} of 
+                    {{ pagination.total_items }} transactions
+                </small>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    {% else %}
+    <!-- Empty State -->
+    <div class="card">
+        <div class="card-body text-center py-5">
+            <i class="bi bi-inbox display-1 text-muted"></i>
+            <h5 class="mt-3">No transactions found</h5>
+            <p class="text-muted">
+                {% if filters.search or filters.type != 'all' or filters.category != 'all' %}
+                    Try adjusting your filters or <a href="/transactions">clear all filters</a>
+                {% else %}
+                    Get started by <a href="/add">adding your first transaction</a>
+                {% endif %}
+            </p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete "<strong id="deleteTransactionName"></strong>"?</p>
+                <p class="text-danger mb-0"><small>This action cannot be undone.</small></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteForm" method="POST" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function confirmDelete(id, name) {
+    document.getElementById('deleteTransactionName').textContent = name;
+    document.getElementById('deleteForm').action = '/transaction/delete/' + id;
+    new bootstrap.Modal(document.getElementById('deleteModal')).show();
+}
+
+// Auto-submit search after typing stops
+let searchTimeout;
+document.querySelector('input[name="search"]').addEventListener('input', function() {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+        document.getElementById('filterForm').submit();
+    }, 500);
+});
+</script>
+{% endblock %}

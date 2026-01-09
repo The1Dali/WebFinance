@@ -337,13 +337,6 @@ def add_transaction():
 
     return render_template("addt.html", categories=categories)
 
-
-@app.route("/statistic")
-@login_required
-def history():
-    """Show history of transactions"""
-    return apg("TODO", 500)
-
 @app.route("/login", methods=["GET", "POST"])
 def login():
     """Log user in"""
@@ -431,17 +424,182 @@ def register():
             return apg("Username already exists", 400)
     else:
         return render_template("register.html")
-    
-
-
-@app.route("/transactions")
-@login_required
-def transactions():
-    """Sell shares of stock"""
-    return apg("TODO", 500)
 
 @app.route("/statistics")
 @login_required
 def statistics():
     """Display extensive income/expense statistics"""
     return apg("TODO", 500)
+
+
+@app.route("/transactions")
+@login_required
+def transactions():
+    """Show all transactions"""
+    user_id = session["user_id"]
+    transaction_type = request.args.get('type', 'all') 
+    category = request.args.get('category', 'all')
+    date_range = request.args.get('range', '90')
+    sort_by = request.args.get('sort', 'date-desc') 
+    search = request.args.get('search', '')
+    page = int(request.args.get('page', 1))
+    per_page = request.args.get("tppage", 20)
+    
+    where_clauses = ["user_id = ?"]
+    params = [user_id]
+    
+    if transaction_type != 'all':
+        where_clauses.append("type = ?")
+        params.append(transaction_type)
+    
+    if category != 'all':
+        where_clauses.append("category = ?")
+        params.append(category)
+
+    if date_range != 'all':
+        days = int(date_range)
+        date_limit = datetime.now() - timedelta(days=days)
+        where_clauses.append("time >= ?")
+        params.append(date_limit)
+    
+    if search:
+        where_clauses.append("(name LIKE ? OR notes LIKE ?)")
+        search_term = f"%{search}%"
+        params.extend([search_term, search_term])
+    
+    where_clause = " AND ".join(where_clauses)
+    
+    if sort_by == 'date-desc':
+        order_by = "time DESC"
+    elif sort_by == 'date-asc':
+        order_by = "time ASC"
+    elif sort_by == 'amount-desc':
+        order_by = "amount DESC"
+    elif sort_by == 'amount-asc':
+        order_by = "amount ASC"
+    else:
+        order_by = "time DESC"
+    
+    count_query = f"SELECT COUNT(*) as total FROM transactions WHERE {where_clause}"
+    total_transactions = db.execute(count_query, *params)[0]['total']
+    total_pages = (total_transactions + int(per_page) - 1) // int(per_page)
+    
+    offset = (page - 1) * int(per_page)
+    query = f"""
+        SELECT id, name, amount, type, category, time, notes, receipt_path, is_recurring
+        FROM transactions
+        WHERE {where_clause}
+        ORDER BY {order_by}
+        LIMIT ? OFFSET ?
+    """
+    
+    transactions = db.execute(query, *params, int(per_page), offset)
+    
+    for transaction in transactions:
+        transaction['formatted_amount'] = f"${transaction['amount']:.2f}"
+        transaction['formatted_date'] = datetime.fromisoformat(str(transaction['time'])).strftime('%b %d, %Y')
+        transaction['formatted_time'] = datetime.fromisoformat(str(transaction['time'])).strftime('%I:%M %p')
+    
+    categories = db.execute("SELECT DISTINCT name FROM categories ORDER BY name")
+    
+    summary_query = f"""
+        SELECT 
+            COALESCE(SUM(CASE WHEN type = 'INCOME' THEN amount ELSE 0 END), 0) as total_income,
+            COALESCE(SUM(CASE WHEN type = 'EXPENSE' THEN amount ELSE 0 END), 0) as total_expense,
+            COUNT(*) as count
+        FROM transactions
+        WHERE {where_clause}
+    """
+    summary = db.execute(summary_query, *params)[0]
+    summary['net'] = summary['total_income'] - summary['total_expense']
+    
+    return render_template("transaction.html",
+        transactions=transactions,
+        categories=categories,
+        summary=summary,
+        filters={
+            'type': transaction_type,
+            'category': category,
+            'range': date_range,
+            'sort': sort_by,
+            'search': search,
+            'per_page' : per_page
+        },
+        pagination={
+            'current': page,
+            'total': total_pages,
+            'total_items': total_transactions
+        }
+    )
+
+@app.route("/transaction/delete/<int:transaction_id>", methods=["POST"])
+@login_required
+def delete_transaction(transaction_id):
+    """Delete a transaction"""
+    user_id = session["user_id"]
+    
+    transaction = db.execute(
+        "SELECT * FROM transactions WHERE id = ? AND user_id = ?",
+        transaction_id, user_id
+    )
+    
+    if not transaction:
+        flash("Transaction not found", "error")
+        return redirect("/transactions")
+    
+    if transaction[0]['receipt_path']:
+        receipt_path = transaction[0]['receipt_path']
+        if os.path.exists(receipt_path):
+            os.remove(receipt_path)
+    
+    db.execute("DELETE FROM transactions WHERE id = ?", transaction_id)
+    
+    flash("Transaction deleted successfully", "success")
+    return redirect("/transactions")
+
+@app.route("/transaction/edit/<int:transaction_id>", methods=["GET", "POST"])
+@login_required
+def edit_transaction(transaction_id):
+    """Edit a transaction"""
+    user_id = session["user_id"]
+    
+    transaction = db.execute(
+        "SELECT * FROM transactions WHERE id = ? AND user_id = ?",
+        transaction_id, user_id
+    )
+    
+    if not transaction:
+        flash("Transaction not found", "error")
+        return redirect("/transactions")
+    
+    transaction = transaction[0]
+    
+    if request.method == "POST":
+        name = request.form.get("name")
+        amount = request.form.get("amount")
+        category = request.form.get("category")
+        notes = request.form.get("notes")
+        
+        if not name or not amount or not category:
+            flash("All fields are required", "error")
+            return redirect(f"/transaction/edit/{transaction_id}")
+        
+        try:
+            amount = float(amount)
+            if amount <= 0:
+                raise ValueError
+        except ValueError:
+            flash("Invalid amount", "error")
+            return redirect(f"/transaction/edit/{transaction_id}")
+        
+        db.execute("""
+            UPDATE transactions 
+            SET name = ?, amount = ?, category = ?, notes = ?
+            WHERE id = ?
+        """, name, amount, category, notes, transaction_id)
+        
+        flash("Transaction updated successfully", "success")
+        return redirect("/transactions")
+    
+    categories = db.execute("SELECT * FROM categories WHERE type = ?", transaction['type'])
+    return render_template("edit_transaction.html", transaction=transaction, categories=categories)
