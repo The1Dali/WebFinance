@@ -1,14 +1,12 @@
 from cs50 import SQL
 from datetime import datetime, timedelta
-from flask import Flask, flash, redirect, render_template, request, session
+from flask import Flask, flash, redirect, render_template, request, session, send_file
 from flask_session import Session
 from io import StringIO, BytesIO
-from reportlab.lib import colors
-from reportlab.lib.pagesizes import letter
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
-from reportlab.lib.styles import getSampleStyleSheet
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
+
+from helpers import apg, usd, login_required, allowed_file, check_budget_warning, get_histogram_data, calculate_trends, get_spending_trends, get_category_analysis, get_period_comparison, get_time_analysis, calculate_financial_health, get_recurring_analysis
 
 import calendar
 import csv
@@ -16,7 +14,6 @@ import calendar
 import json
 import os
 
-import helpers
 
 
 UPLOAD_FOLDER = "Database/Receipts"
