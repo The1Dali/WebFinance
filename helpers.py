@@ -273,26 +273,26 @@ def calculate_trends(user_id):
     this_month_start = today.replace(day=1)
     last_month_end = this_month_start - timedelta(days=1)
     last_month_start = last_month_end.replace(day=1)
-    
+
     this_month = db.execute("""
         SELECT COALESCE(SUM(amount), 0) as total
         FROM transactions
         WHERE user_id = ? AND type = 'EXPENSE'
         AND time >= ?
     """, user_id, this_month_start)[0]['total']
-    
+
     last_month = db.execute("""
         SELECT COALESCE(SUM(amount), 0) as total
         FROM transactions
         WHERE user_id = ? AND type = 'EXPENSE'
         AND time >= ? AND time < ?
     """, user_id, last_month_start, this_month_start)[0]['total']
-    
+
     if last_month > 0:
         change = ((this_month - last_month) / last_month) * 100
     else:
         change = 0 if this_month == 0 else 100
-    
+
     # Top spending category
     top_category = db.execute("""
         SELECT category, SUM(amount) as total
@@ -303,8 +303,234 @@ def calculate_trends(user_id):
         ORDER BY total DESC
         LIMIT 1
     """, user_id, this_month_start)
-    
+
     return {
         'monthly_change': round(change, 1),
         'top_category': top_category[0] if top_category else None
     }
+
+def get_spending_trends(user_id, start_date, end_date):
+    """Get daily spending trends for line chart"""
+    trends = db.execute("""
+        SELECT 
+            DATE(time) as date,
+            SUM(CASE WHEN type = 'EXPENSE' THEN amount ELSE 0 END) as expenses,
+            SUM(CASE WHEN type = 'INCOME' THEN amount ELSE 0 END) as income
+        FROM transactions
+        WHERE user_id = ? AND time >= ? AND time <= ?
+        GROUP BY DATE(time)
+        ORDER BY date
+    """, user_id, start_date, end_date)
+
+    # Fill in missing dates with 0
+    all_dates = []
+    current = start_date
+    while current <= end_date:
+        all_dates.append(current.strftime('%Y-%m-%d'))
+        current += timedelta(days=1)
+
+    trend_map = {t['date']: t for t in trends}
+
+    return {
+        'labels': all_dates,
+        'income': [float(trend_map.get(d, {}).get('income', 0)) for d in all_dates],
+        'expenses': [float(trend_map.get(d, {}).get('expenses', 0)) for d in all_dates]
+    }
+
+
+def get_category_analysis(user_id, start_date, end_date):
+    """Detailed category breakdown with trends"""
+    categories = db.execute("""
+        SELECT 
+            category,
+            SUM(amount) as total,
+            COUNT(*) as transaction_count,
+            AVG(amount) as avg_amount,
+            MAX(amount) as max_amount,
+            MIN(amount) as min_amount
+        FROM transactions
+        WHERE user_id = ? AND type = 'EXPENSE'
+        AND time >= ? AND time <= ?
+        GROUP BY category
+        ORDER BY total DESC
+    """, user_id, start_date, end_date)
+    
+    total_spending = sum(c['total'] for c in categories)
+    
+    for cat in categories:
+        cat['percentage'] = (cat['total'] / total_spending * 100) if total_spending > 0 else 0
+        cat['total'] = float(cat['total'])
+        cat['avg_amount'] = float(cat['avg_amount'])
+        cat['max_amount'] = float(cat['max_amount'])
+        cat['min_amount'] = float(cat['min_amount'])
+    
+    return categories
+
+
+def get_period_comparison(user_id, start_date, end_date):
+    """Compare current period with previous period"""
+    period_length = (end_date - start_date).days
+    prev_start = start_date - timedelta(days=period_length)
+    prev_end = start_date - timedelta(days=1)
+    
+    # Current period
+    current = db.execute("""
+        SELECT 
+            COALESCE(SUM(CASE WHEN type = 'INCOME' THEN amount ELSE 0 END), 0) as income,
+            COALESCE(SUM(CASE WHEN type = 'EXPENSE' THEN amount ELSE 0 END), 0) as expense
+        FROM transactions
+        WHERE user_id = ? AND time >= ? AND time <= ?
+    """, user_id, start_date, end_date)[0]
+    
+    # Previous period
+    previous = db.execute("""
+        SELECT 
+            COALESCE(SUM(CASE WHEN type = 'INCOME' THEN amount ELSE 0 END), 0) as income,
+            COALESCE(SUM(CASE WHEN type = 'EXPENSE' THEN amount ELSE 0 END), 0) as expense
+        FROM transactions
+        WHERE user_id = ? AND time >= ? AND time <= ?
+    """, user_id, prev_start, prev_end)[0]
+    
+    # Calculate changes
+    income_change = ((current['income'] - previous['income']) / previous['income'] * 100) if previous['income'] > 0 else 0
+    expense_change = ((current['expense'] - previous['expense']) / previous['expense'] * 100) if previous['expense'] > 0 else 0
+    
+    return {
+        'current_income': float(current['income']),
+        'current_expense': float(current['expense']),
+        'previous_income': float(previous['income']),
+        'previous_expense': float(previous['expense']),
+        'income_change': round(income_change, 1),
+        'expense_change': round(expense_change, 1)
+    }
+
+
+def get_time_analysis(user_id, start_date, end_date):
+    """Analyze spending patterns by day of week and time of day"""
+    
+    # By day of week
+    by_weekday = db.execute("""
+        SELECT 
+            CASE CAST(strftime('%w', time) AS INTEGER)
+                WHEN 0 THEN 'Sunday'
+                WHEN 1 THEN 'Monday'
+                WHEN 2 THEN 'Tuesday'
+                WHEN 3 THEN 'Wednesday'
+                WHEN 4 THEN 'Thursday'
+                WHEN 5 THEN 'Friday'
+                WHEN 6 THEN 'Saturday'
+            END as weekday,
+            CAST(strftime('%w', time) AS INTEGER) as day_num,
+            COALESCE(SUM(amount), 0) as total
+        FROM transactions
+        WHERE user_id = ? AND type = 'EXPENSE'
+        AND time >= ? AND time <= ?
+        GROUP BY day_num
+        ORDER BY day_num
+    """, user_id, start_date, end_date)
+    
+    weekday_map = {day['weekday']: float(day['total']) for day in by_weekday}
+    weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+    
+    return {
+        'weekday_labels': weekdays,
+        'weekday_data': [weekday_map.get(day, 0) for day in weekdays]
+    }
+
+
+def calculate_financial_health(user_id, start_date, end_date):
+    """Calculate overall financial health score (0-100)"""
+    
+    stats = db.execute("""
+        SELECT 
+            COALESCE(SUM(CASE WHEN type = 'INCOME' THEN amount ELSE 0 END), 0) as income,
+            COALESCE(SUM(CASE WHEN type = 'EXPENSE' THEN amount ELSE 0 END), 0) as expense
+        FROM transactions
+        WHERE user_id = ? AND time >= ? AND time <= ?
+    """, user_id, start_date, end_date)[0]
+    
+    income = float(stats['income'])
+    expense = float(stats['expense'])
+    
+    # Score components (out of 100)
+    score = 0
+    breakdown = {}
+    
+    # 1. Savings Rate (40 points max)
+    if income > 0:
+        savings_rate = (income - expense) / income
+        savings_points = min(savings_rate * 100, 40)  # Cap at 40
+        score += savings_points
+        breakdown['savings'] = round(savings_points, 1)
+    else:
+        breakdown['savings'] = 0
+    
+    # 2. Budget Adherence (30 points max)
+    budget = db.execute("""
+        SELECT amount FROM budgets
+        WHERE user_id = ? AND period = 'MONTHLY' AND is_active = 1
+    """, user_id)
+    
+    if budget:
+        budget_amount = budget[0]['amount']
+        monthly_expense = expense / ((end_date - start_date).days / 30)
+        adherence = 1 - abs(monthly_expense - budget_amount) / budget_amount
+        budget_points = max(adherence * 30, 0)
+        score += budget_points
+        breakdown['budget'] = round(budget_points, 1)
+    else:
+        breakdown['budget'] = 0
+    
+    # 3. Income Consistency (30 points max)
+    income_transactions = db.execute("""
+        SELECT COUNT(*) as count
+        FROM transactions
+        WHERE user_id = ? AND type = 'INCOME'
+        AND time >= ? AND time <= ?
+    """, user_id, start_date, end_date)[0]['count']
+    
+    if income_transactions >= 3:
+        consistency_points = 30
+    elif income_transactions >= 1:
+        consistency_points = income_transactions * 10
+    else:
+        consistency_points = 0
+    
+    score += consistency_points
+    breakdown['consistency'] = consistency_points
+    
+    return {
+        'score': round(score, 1),
+        'breakdown': breakdown,
+        'rating': 'Excellent' if score >= 80 else 'Good' if score >= 60 else 'Fair' if score >= 40 else 'Needs Improvement'
+    }
+
+
+def get_recurring_analysis(user_id):
+    """Analyze recurring transactions"""
+    recurring = db.execute("""
+        SELECT 
+            COUNT(*) as count,
+            COALESCE(SUM(amount), 0) as total,
+            type
+        FROM recurring_transactions
+        WHERE user_id = ? AND is_active = 1
+        GROUP BY type
+    """, user_id)
+    
+    stats = {
+        'income_count': 0,
+        'income_total': 0,
+        'expense_count': 0,
+        'expense_total': 0
+    }
+    
+    for r in recurring:
+        if r['type'] == 'INCOME':
+            stats['income_count'] = r['count']
+            stats['income_total'] = float(r['total'])
+        else:
+            stats['expense_count'] = r['count']
+            stats['expense_total'] = float(r['total'])
+    
+    return stats

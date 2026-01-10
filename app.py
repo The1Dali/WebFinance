@@ -1,15 +1,23 @@
-import json
-import os
-import calendar
-
 from cs50 import SQL
 from datetime import datetime, timedelta
 from flask import Flask, flash, redirect, render_template, request, session
 from flask_session import Session
+from io import StringIO, BytesIO
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 
-from helpers import apg, login_required, check_budget_warning, allowed_file, get_histogram_data, calculate_trends, usd
+import calendar
+import csv
+import calendar
+import json
+import os
+
+import helpers
+
 
 UPLOAD_FOLDER = "Database/Receipts"
 MAX_FILE_SIZE = 5 * 1024 * 1024 
@@ -337,6 +345,107 @@ def add_transaction():
     
 
     return render_template("addt.html", categories=categories)
+
+@app.route("/analytics")
+def analytics():
+    """Detailed analytics and insights"""
+    user_id = session["user_id"]
+    
+    start_date_str = request.args.get('start_date', '')
+    end_date_str = request.args.get('end_date', '')
+    
+    if not start_date_str or not end_date_str:
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=90)
+    else:
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
+    
+    spending_trends = get_spending_trends(user_id, start_date, end_date)
+    
+    category_analysis = get_category_analysis(user_id, start_date, end_date)
+    
+    comparison = get_period_comparison(user_id, start_date, end_date)
+    
+    time_analysis = get_time_analysis(user_id, start_date, end_date)
+    
+    health_score = calculate_financial_health(user_id, start_date, end_date)
+    
+    top_expenses = db.execute("""
+        SELECT name, amount, category, time
+        FROM transactions
+        WHERE user_id = ? AND type = 'EXPENSE'
+        AND time >= ? AND time <= ?
+        ORDER BY amount DESC
+        LIMIT 10
+    """, user_id, start_date, end_date)
+    
+    top_income = db.execute("""
+        SELECT name, amount, category, time
+        FROM transactions
+        WHERE user_id = ? AND type = 'INCOME'
+        AND time >= ? AND time <= ?
+        ORDER BY amount DESC
+        LIMIT 10
+    """, user_id, start_date, end_date)
+    
+    for t in top_expenses + top_income:
+        t['formatted_date'] = datetime.fromisoformat(str(t['time'])).strftime('%b %d, %Y')
+    
+    recurring_stats = get_recurring_analysis(user_id)
+    
+    return render_template("analytics.html",
+        spending_trends=json.dumps(spending_trends),
+        category_analysis=category_analysis,
+        comparison=comparison,
+        time_analysis=json.dumps(time_analysis),
+        health_score=health_score,
+        top_expenses=top_expenses,
+        top_income=top_income,
+        recurring_stats=recurring_stats,
+        start_date=start_date.strftime('%Y-%m-%d'),
+        end_date=end_date.strftime('%Y-%m-%d')
+    )
+
+@app.route("/analytics/export/csv")
+@login_required
+def export_csv():
+    """Export transactions to CSV"""
+    user_id = session["user_id"]
+    
+    start_date = request.args.get('start_date', '')
+    end_date = request.args.get('end_date', '')
+    
+    transactions = db.execute("""
+        SELECT name, amount, type, category, time, notes
+        FROM transactions
+        WHERE user_id = ?
+        AND time >= ? AND time <= ?
+        ORDER BY time DESC
+    """, user_id, start_date, end_date)
+    
+    # Create CSV
+    output = StringIO()
+    writer = csv.writer(output)
+    writer.writerow(['Date', 'Name', 'Type', 'Category', 'Amount', 'Notes'])
+    
+    for t in transactions:
+        writer.writerow([
+            t['time'],
+            t['name'],
+            t['type'],
+            t['category'],
+            t['amount'],
+            t['notes'] or ''
+        ])
+    
+    output.seek(0)
+    return send_file(
+        BytesIO(output.getvalue().encode()),
+        mimetype='text/csv',
+        as_attachment=True,
+        download_name=f'transactions_{start_date}_to_{end_date}.csv'
+    )
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
