@@ -1,14 +1,15 @@
 import json
 import os
-from datetime import datetime, timedelta
+import calendar
 
 from cs50 import SQL
+from datetime import datetime, timedelta
 from flask import Flask, flash, redirect, render_template, request, session
 from flask_session import Session
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 
-from helpers import apg, login_required, usd, check_budget_warning, allowed_file
+from helpers import apg, login_required, check_budget_warning, allowed_file, get_histogram_data, calculate_trends, usd
 
 UPLOAD_FOLDER = "Database/Receipts"
 MAX_FILE_SIZE = 5 * 1024 * 1024 
@@ -428,8 +429,128 @@ def register():
 @app.route("/statistics")
 @login_required
 def statistics():
-    """Display extensive income/expense statistics"""
-    return apg("TODO", 500)
+    """Interactive statistics and visualizations"""
+    user_id = session["user_id"]
+
+    view = request.args.get('view', 'weekly')  # daily, weekly, monthly, annual
+    period = request.args.get('period', 'current')
+    
+    today = datetime.now()
+    
+    if view == 'daily':
+        if period == 'current':
+            start_date = today - timedelta(days=today.weekday())
+            end_date = today
+            labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+        elif period == 'last':
+            start_date = today - timedelta(days=today.weekday() + 7)
+            end_date = today - timedelta(days=today.weekday() + 1)
+            labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+        else:
+            start_date = today - timedelta(days=today.weekday() + 14)
+            end_date = today - timedelta(days=today.weekday() + 8)
+            labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+            
+    elif view == 'weekly':
+        if period == 'current':
+            start_date = today.replace(day=1)
+            end_date = today
+            labels = ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5']
+        elif period == 'last':
+            last_month = today.replace(day=1) - timedelta(days=1)
+            start_date = last_month.replace(day=1)
+            end_date = last_month
+            labels = ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5']
+        else: 
+            two_months_ago = (today.replace(day=1) - timedelta(days=1)).replace(day=1) - timedelta(days=1)
+            start_date = two_months_ago.replace(day=1)
+            end_date = two_months_ago
+            labels = ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5']
+            
+    elif view == 'monthly':
+        if period == 'current':
+            start_date = today.replace(month=1, day=1)
+            end_date = today
+        elif period == 'last':
+            start_date = (today.replace(month=1, day=1) - timedelta(days=1)).replace(month=1, day=1)
+            end_date = today.replace(month=1, day=1) - timedelta(days=1)
+        else: 
+            start_date = (today.replace(year=today.year - 2, month=1, day=1))
+            end_date = today.replace(year=today.year - 2, month=12, day=31)
+        labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+        
+    else: 
+        if period == 'last5':
+            start_date = today.replace(year=today.year - 5, month=1, day=1)
+            end_date = today
+            labels = [str(today.year - i) for i in range(5, -1, -1)]
+        elif period == 'last10':
+            start_date = today.replace(year=today.year - 10, month=1, day=1)
+            end_date = today
+            labels = [str(today.year - i) for i in range(10, -1, -1)]
+        else:
+            # Get earliest transaction year
+            earliest = db.execute("""
+                SELECT MIN(time) as first_transaction 
+                FROM transactions 
+                WHERE user_id = ?
+            """, user_id)
+            if earliest and earliest[0]['first_transaction']:
+                first_year = datetime.fromisoformat(str(earliest[0]['first_transaction'])).year
+                start_date = datetime(first_year, 1, 1)
+                end_date = today
+                labels = [str(y) for y in range(first_year, today.year + 1)]
+            else:
+                start_date = today.replace(year=today.year - 5, month=1, day=1)
+                end_date = today
+                labels = [str(today.year - i) for i in range(5, -1, -1)]
+    
+    histogram_data = get_histogram_data(user_id, view, start_date, end_date, labels)
+    
+
+    income_by_category = db.execute("""
+        SELECT category, SUM(amount) as total
+        FROM transactions
+        WHERE user_id = ? AND type = 'INCOME'
+        GROUP BY category
+        ORDER BY total DESC
+    """, user_id)
+    
+    expense_by_category = db.execute("""
+        SELECT category, SUM(amount) as total
+        FROM transactions
+        WHERE user_id = ? AND type = 'EXPENSE'
+        GROUP BY category
+        ORDER BY total DESC
+    """, user_id)
+    
+    categories_info = db.execute("SELECT name, color FROM categories")
+    color_map = {cat['name']: cat['color'] for cat in categories_info if cat['color']}
+    
+    income_chart = {
+        'labels': [row['category'] for row in income_by_category],
+        'values': [float(row['total']) for row in income_by_category],
+        'colors': [color_map.get(row['category'], '#6c757d') for row in income_by_category]
+    }
+    
+    expense_chart = {
+        'labels': [row['category'] for row in expense_by_category],
+        'values': [float(row['total']) for row in expense_by_category],
+        'colors': [color_map.get(row['category'], '#6c757d') for row in expense_by_category]
+    }
+    
+
+    trends = calculate_trends(user_id)
+
+    
+    return render_template("statistic.html",
+        histogram_data=json.dumps(histogram_data),
+        income_chart=json.dumps(income_chart),
+        expense_chart=json.dumps(expense_chart),
+        trends=trends,
+        current_view=view,
+        current_period=period
+    )
 
 
 @app.route("/transactions")
