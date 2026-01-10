@@ -485,7 +485,40 @@ main
 
 @media (max-width: 576px) 
 {
-    .meme-text {
+    .meme-text 
+    {
         font-size: 1.5rem;
     }
+}
+.timeline 
+{
+    position: relative;
+    padding-left: 0;
+}
+
+.timeline-month 
+{
+    border-left: 3px solid #667eea;
+    padding-left: 1rem;
+}
+
+.timeline-item 
+{
+    padding-left: 1rem;
+    border-left: 2px solid #e9ecef;
+    position: relative;
+}
+
+.timeline-item::before 
+{
+    content: '';
+    position: absolute;
+    left: -6px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #667eea;
+    border: 2px solid white;
 }

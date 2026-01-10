@@ -1,4 +1,3 @@
-import requests
 from datetime import datetime, timedelta
 
 from cs50 import SQL
@@ -534,3 +533,98 @@ def get_recurring_analysis(user_id):
             stats['expense_total'] = float(r['total'])
     
     return stats
+
+def calculate_next_date(current_date, frequency):
+    """Calculate the next occurrence date based on frequency"""
+    
+    if frequency == 'DAILY':
+        return current_date + timedelta(days=1)
+    elif frequency == 'WEEKLY':
+        return current_date + timedelta(weeks=1)
+    elif frequency == 'BIWEEKLY':
+        return current_date + timedelta(weeks=2)
+    elif frequency == 'MONTHLY':
+        # Handle month-end edge cases
+        month = current_date.month
+        year = current_date.year
+        day = current_date.day
+        
+        # Move to next month
+        if month == 12:
+            month = 1
+            year += 1
+        else:
+            month += 1
+        
+        # Handle day overflow (e.g., Jan 31 -> Feb 31 doesn't exist)
+        import calendar
+        max_day = calendar.monthrange(year, month)[1]
+        day = min(day, max_day)
+        
+        return current_date.replace(year=year, month=month, day=day)
+        
+    elif frequency == 'YEARLY':
+        # Handle leap year edge case (Feb 29)
+        year = current_date.year + 1
+        month = current_date.month
+        day = current_date.day
+        
+        # Feb 29 in non-leap year becomes Feb 28
+        if month == 2 and day == 29:
+            import calendar
+            if not calendar.isleap(year):
+                day = 28
+        
+        return current_date.replace(year=year, month=month, day=day)
+    else:
+        return current_date + timedelta(days=30)
+
+def process_recurring_transactions():
+    """Create transactions from recurring templates that are due"""
+    today = datetime.now().date()
+    
+    # Get all active recurring transactions that are due
+    due_recurring = db.execute("""
+        SELECT id, user_id, name, amount, type, category, notes, frequency, next_occurrence
+        FROM recurring_transactions
+        WHERE is_active = 1
+        AND next_occurrence <= ?
+    """, today)
+    
+    for rt in due_recurring:
+        try:
+            # Create the actual transaction
+            db.execute("""
+                INSERT INTO transactions 
+                (user_id, name, amount, type, category, notes, is_recurring, recurring_template_id, time)
+                VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)
+            """, 
+                rt['user_id'],
+                rt['name'],
+                rt['amount'],
+                rt['type'],
+                rt['category'],
+                rt['notes'],
+                rt['id'],
+                rt['next_occurrence']
+            )
+            
+            # Calculate and update next occurrence
+            current_date = datetime.strptime(str(rt['next_occurrence']), '%Y-%m-%d').date()
+            next_date = calculate_next_date(current_date, rt['frequency'])
+            
+            db.execute("""
+                UPDATE recurring_transactions
+                SET next_occurrence = ?
+                WHERE id = ?
+            """, next_date.strftime('%Y-%m-%d'), rt['id'])
+            
+            print(f"Created recurring transaction: {rt['name']} for {rt['next_occurrence']}")
+            
+        except Exception as e:
+            print(f"Error creating recurring transaction {rt['id']}: {e}")
+            continue
+    
+    return len(due_recurring)
+
+    

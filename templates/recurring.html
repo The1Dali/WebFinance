@@ -1,0 +1,247 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Recurring Transactions
+{% endblock %}
+
+{% block main %}
+    <div class="container py-4">
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <a href="/" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Back
+            </a>
+            <a href="/recurring/preview" class="btn btn-primary">
+                <i class="bi bi-calendar3"></i> Preview Recurring Transactions
+            </a>
+        </div>
+        <div class="d-flex justify-content-center align-items-center">
+            <h2 class="mb-3">Recurring Transactions</h2>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <small class="text-muted">Active Income</small>
+                        <h4 class="text-success mb-0">{{ summary.income_count }}</h4>
+                        <small class="text-muted">${{ "%.2f"|format(summary.income_total) }}/period</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <small class="text-muted">Active Expenses</small>
+                        <h4 class="text-danger mb-0">{{ summary.expense_count }}</h4>
+                        <small class="text-muted">${{ "%.2f"|format(summary.expense_total) }}/period</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <small class="text-muted">Net Recurring</small>
+                        <h4 class="{% if summary.net >= 0 %}text-success{% else %}text-danger{% endif %} mb-0">
+                            ${{ "%.2f"|format(summary.net) }}
+                        </h4>
+                        <small class="text-muted">per period</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <small class="text-muted mb-4">Total Active</small>
+                        <h4 class="mb-4">{{ summary.income_count + summary.expense_count }}</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <form method="GET" action="/recurring" class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Status</label>
+                        <select name="status" class="form-select" onchange="this.form.submit()">
+                            <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active Only</option>
+                            <option value="paused" {% if status_filter == 'paused' %}selected{% endif %}>Paused Only</option>
+                            <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Type</label>
+                        <select name="type" class="form-select" onchange="this.form.submit()">
+                            <option value="all" {% if type_filter == 'all' %}selected{% endif %}>All Types</option>
+                            <option value="INCOME" {% if type_filter == 'INCOME' %}selected{% endif %}>Income</option>
+                            <option value="EXPENSE" {% if type_filter == 'EXPENSE' %}selected{% endif %}>Expenses</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4 d-flex align-items-end">
+                        <a href="/recurring" class="btn btn-outline-secondary w-100">
+                            <i class="bi bi-x-circle"></i> Clear Filters
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Recurring Transactions List -->
+        {% if recurring_transactions %}
+        <div class="row g-3">
+            {% for rt in recurring_transactions %}
+            <div class="col-lg-6">
+                <div class="card h-100 {% if not rt.is_active %}opacity-75{% endif %}">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div class="flex-grow-1">
+                                <h5 class="card-title mb-1">
+                                    {% if rt.type == 'INCOME' %}
+                                        <i class="bi bi-arrow-up-circle-fill text-success"></i>
+                                    {% else %}
+                                        <i class="bi bi-arrow-down-circle-fill text-danger"></i>
+                                    {% endif %}
+                                    {{ rt.name }}
+                                    {% if not rt.is_active %}
+                                        <span class="badge bg-secondary">Paused</span>
+                                    {% endif %}
+                                </h5>
+                                <h4 class="{% if rt.type == 'INCOME' %}text-success{% else %}text-danger{% endif %} mb-2">
+                                    {% if rt.type == 'INCOME' %}+{% else %}-{% endif %}${{ "%.2f"|format(rt.amount) }}
+                                </h4>
+                            </div>
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="dropdown">
+                                    <i class="bi bi-three-dots-vertical"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li>
+                                        <a class="dropdown-item" href="/recurring/edit/{{ rt.id }}">
+                                            <i class="bi bi-pencil"></i> Edit
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <form method="POST" action="/recurring/toggle/{{ rt.id }}" style="display: inline;">
+                                            <button type="submit" class="dropdown-item">
+                                                {% if rt.is_active %}
+                                                    <i class="bi bi-pause-circle"></i> Pause
+                                                {% else %}
+                                                    <i class="bi bi-play-circle"></i> Activate
+                                                {% endif %}
+                                            </button>
+                                        </form>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <button class="dropdown-item text-danger" 
+                                                onclick="confirmDelete({{ rt.id }}, '{{ rt.name }}')">
+                                            <i class="bi bi-trash"></i> Delete
+                                        </button>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <small class="text-muted d-block">Category</small>
+                                <span class="badge bg-secondary">{{ rt.category }}</span>
+                            </div>
+                            <div class="col-6">
+                                <small class="text-muted d-block">Frequency</small>
+                                <strong>{{ rt.frequency.capitalize() }}</strong>
+                            </div>
+                        </div>
+
+                        <div class="row g-2 mb-2">
+                            <div class="col-6">
+                                <small class="text-muted d-block">Started</small>
+                                <small>{{ rt.formatted_start }}</small>
+                            </div>
+                            <div class="col-6">
+                                <small class="text-muted d-block">Ends</small>
+                                <small>{{ rt.formatted_end }}</small>
+                            </div>
+                        </div>
+
+                        {% if rt.is_active and rt.next_occurrence %}
+                        <div class="alert {% if rt.is_due_soon %}alert-warning{% else %}alert-info{% endif %} mb-0 py-2">
+                            <small>
+                                <i class="bi bi-clock"></i> Next: {{ rt.formatted_next }}
+                                {% if rt.days_until == 0 %}
+                                    (Today!)
+                                {% elif rt.days_until == 1 %}
+                                    (Tomorrow)
+                                {% elif rt.days_until > 0 %}
+                                    (in {{ rt.days_until }} days)
+                                {% endif %}
+                            </small>
+                        </div>
+                        {% endif %}
+
+                        {% if rt.notes %}
+                        <div class="mt-2">
+                            <small class="text-muted">{{ rt.notes }}</small>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <!-- Empty State -->
+        <div class="card">
+            <div class="card-body text-center py-5">
+                <i class="bi bi-arrow-repeat display-1 text-muted"></i>
+                <h5 class="mt-3">No Recurring Transactions</h5>
+                <p class="text-muted">
+                    {% if status_filter != 'active' or type_filter != 'all' %}
+                        Try adjusting your filters or <a href="/recurring">clear all filters</a>
+                    {% else %}
+                        Set up recurring transactions when <a href="/add">adding a transaction</a>
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal fade" id="deleteModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirm Delete</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete the recurring transaction "<strong id="deleteRecurringName"></strong>"?</p>
+                    <p class="text-warning mb-0">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        <small>This will delete the template but keep all past transactions.</small>
+                    </p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <form id="deleteForm" method="POST" style="display: inline;">
+                        <button type="submit" class="btn btn-danger">Delete Template</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function confirmDelete(id, name) {
+    document.getElementById('deleteRecurringName').textContent = name;
+    document.getElementById('deleteForm').action = '/recurring/delete/' + id;
+    new bootstrap.Modal(document.getElementById('deleteModal')).show();
+}
+</script>
+{% endblock %}

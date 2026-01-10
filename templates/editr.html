@@ -1,0 +1,133 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Edit Recurring Transaction
+{% endblock %}
+
+{% block main %}
+    <div class="container py-4">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <!-- Header -->
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <a href="/recurring" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left"></i> Back
+                    </a>
+                </div>
+                <div class="d-flex justify-content-center align-items-center">
+                    <h2 class="mb-4">Edit Recurring Transaction</h2>
+                </div>
+
+                <div class="card">
+                    <div class="card-body">
+                        <form method="POST" action="/recurring/edit/{{ recurring.id }}">
+                            <!-- Transaction Type (Display only) -->
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Type</label>
+                                <div class="alert {% if recurring.type == 'INCOME' %}alert-success{% else %}alert-danger{% endif %} mb-0">
+                                    {% if recurring.type == 'INCOME' %}
+                                        <i class="bi bi-arrow-up-circle"></i> Income
+                                    {% else %}
+                                        <i class="bi bi-arrow-down-circle"></i> Expense
+                                    {% endif %}
+                                </div>
+                                <small class="text-muted">Transaction type cannot be changed</small>
+                            </div>
+
+                            <!-- Name -->
+                            <div class="mb-3">
+                                <label for="name" class="form-label fw-bold">Name *</label>
+                                <input type="text" 
+                                    name="name" 
+                                    class="form-control" 
+                                    id="name" 
+                                    value="{{ recurring.name }}"
+                                    required>
+                            </div>
+
+                            <!-- Amount -->
+                            <div class="mb-3">
+                                <label for="amount" class="form-label fw-bold">Amount *</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" 
+                                        name="amount" 
+                                        class="form-control" 
+                                        id="amount" 
+                                        value="{{ recurring.amount }}"
+                                        step="0.01"
+                                        min="0.01"
+                                        required>
+                                </div>
+                            </div>
+
+                            <!-- Category -->
+                            <div class="mb-3">
+                                <label for="category" class="form-label fw-bold">Category *</label>
+                                <select class="form-select" name="category" id="category" required>
+                                    {% for cat in categories %}
+                                    <option value="{{ cat.name }}" {% if cat.name == recurring.category %}selected{% endif %}>
+                                        {{ cat.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <!-- Frequency -->
+                            <div class="mb-3">
+                                <label for="frequency" class="form-label fw-bold">Frequency *</label>
+                                <select class="form-select" name="frequency" id="frequency" required>
+                                    <option value="DAILY" {% if recurring.frequency == 'DAILY' %}selected{% endif %}>Daily</option>
+                                    <option value="WEEKLY" {% if recurring.frequency == 'WEEKLY' %}selected{% endif %}>Weekly</option>
+                                    <option value="BIWEEKLY" {% if recurring.frequency == 'BIWEEKLY' %}selected{% endif %}>Bi-weekly</option>
+                                    <option value="MONTHLY" {% if recurring.frequency == 'MONTHLY' %}selected{% endif %}>Monthly</option>
+                                    <option value="YEARLY" {% if recurring.frequency == 'YEARLY' %}selected{% endif %}>Yearly</option>
+                                </select>
+                            </div>
+
+                            <!-- End Date -->
+                            <div class="mb-3">
+                                <label for="end_date" class="form-label fw-bold">End Date (Optional)</label>
+                                <input type="date" 
+                                    class="form-control" 
+                                    name="end_date"
+                                    id="end_date" 
+                                    value="{{ recurring.end_date or '' }}">
+                                <small class="text-muted">Leave empty for indefinite recurrence</small>
+                            </div>
+
+                            <!-- Notes -->
+                            <div class="mb-3">
+                                <label for="notes" class="form-label fw-bold">Notes</label>
+                                <textarea class="form-control" 
+                                        name="notes" 
+                                        id="notes" 
+                                        rows="3">{{ recurring.notes or '' }}</textarea>
+                            </div>
+
+                            <!-- Start Date (Display only) -->
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Start Date</label>
+                                <input type="text" 
+                                    class="form-control" 
+                                    value="{{ recurring.start_date }}" 
+                                    readonly>
+                                <small class="text-muted">Start date cannot be changed</small>
+                            </div>
+
+                            <!-- Buttons -->
+                            <div class="d-flex gap-2 justify-content-end">
+                                <a href="/recurring" class="btn btn-outline-secondary">
+                                    <i class="bi bi-x-circle"></i> Cancel
+                                </a>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-check-circle"></i> Save Changes
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

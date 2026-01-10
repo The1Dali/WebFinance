@@ -6,7 +6,7 @@ from io import StringIO, BytesIO
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 
-from helpers import apg, usd, login_required, allowed_file, check_budget_warning, get_histogram_data, calculate_trends, get_spending_trends, get_category_analysis, get_period_comparison, get_time_analysis, calculate_financial_health, get_recurring_analysis
+from helpers import apg, usd, login_required, allowed_file, check_budget_warning, get_histogram_data, calculate_trends, get_spending_trends, get_category_analysis, get_period_comparison, get_time_analysis, calculate_financial_health, get_recurring_analysis, calculate_next_date, process_recurring_transactions
 
 import calendar
 import csv
@@ -32,6 +32,13 @@ Session(app)
 
 # Configure CS50 Library to use SQLite database
 db = SQL("sqlite:///Database/finance.db")
+
+@app.before_request
+def before_first_request():
+    """Run recurring transactions processor on app startup"""
+    if not hasattr(app, 'recurring_processed'):
+        process_recurring_transactions()
+        app.recurring_processed = True
 
 
 @app.after_request
@@ -271,30 +278,25 @@ def add_transaction():
         
         try:
             if is_recurring:
-                next_occurrence = datetime.now().date()
+                today = datetime.now().date()
                 
-                recurring_id = db.execute("""
-                    INSERT INTO recurring_transactions 
+                recurring_id = db.execute("""INSERT INTO recurring_transactions 
                     (user_id, name, amount, type, category, frequency, start_date, end_date, next_occurrence, notes)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""", 
                     user_id, 
                     name, 
                     amount, 
                     transaction_type, 
                     category, 
                     recurring_frequency,
-                    datetime.now().date(),
+                    today,  
                     recurring_end_date if recurring_end_date else None,
-                    next_occurrence,
-                    notes
-                )
+                    today, 
+                    notes)
                 
-                db.execute("""
-                    INSERT INTO transactions 
+                db.execute("""INSERT INTO transactions 
                     (user_id, name, amount, type, category, notes, receipt_path, is_recurring, recurring_template_id, time)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""", 
                     user_id, 
                     name, 
                     amount, 
@@ -304,8 +306,14 @@ def add_transaction():
                     receipt_path,
                     1,
                     recurring_id,
-                    transaction_date
-                )
+                    today)
+                
+                next_date = calculate_next_date(today, recurring_frequency)
+                db.execute("""
+                    UPDATE recurring_transactions
+                    SET next_occurrence = ?
+                    WHERE id = ?
+                """, next_date, recurring_id)
                 
                 flash(f"Recurring {transaction_type.lower()} added successfully!", "success")
             else:
@@ -509,6 +517,251 @@ def view_receipt(transaction_id):
         abort(404)
     
     return send_file(receipt_path)
+
+@app.route("/recurring")
+@login_required
+def recurring():
+    """View and manage recurring transactions"""
+    user_id = session["user_id"]
+    
+    status_filter = request.args.get('status', 'active')
+    type_filter = request.args.get('type', 'all') 
+    
+    where_clauses = ["user_id = ?"]
+    params = [user_id]
+    
+    if status_filter == 'active':
+        where_clauses.append("is_active = 1")
+    elif status_filter == 'paused':
+        where_clauses.append("is_active = 0")
+    
+    if type_filter != 'all':
+        where_clauses.append("type = ?")
+        params.append(type_filter)
+    
+    where_clause = " AND ".join(where_clauses)
+    
+    recurring_transactions = db.execute(f"""
+        SELECT id, name, amount, type, category, frequency, 
+               start_date, end_date, next_occurrence, is_active, notes
+        FROM recurring_transactions
+        WHERE {where_clause}
+        ORDER BY is_active DESC, next_occurrence ASC
+    """, *params)
+    
+    for rt in recurring_transactions:
+        rt['formatted_start'] = datetime.fromisoformat(str(rt['start_date'])).strftime('%b %d, %Y')
+        if rt['end_date']:
+            rt['formatted_end'] = datetime.fromisoformat(str(rt['end_date'])).strftime('%b %d, %Y')
+        else:
+            rt['formatted_end'] = 'Indefinite'
+        
+        if rt['next_occurrence']:
+            rt['formatted_next'] = datetime.fromisoformat(str(rt['next_occurrence'])).strftime('%b %d, %Y')
+            next_date = datetime.fromisoformat(str(rt['next_occurrence'])).date()
+            today = datetime.now().date()
+            days_until = (next_date - today).days
+            rt['days_until'] = days_until
+            rt['is_due_soon'] = 0 <= days_until <= 7
+    
+    active_income = db.execute("""
+        SELECT COUNT(*) as count, COALESCE(SUM(amount), 0) as total
+        FROM recurring_transactions
+        WHERE user_id = ? AND type = 'INCOME' AND is_active = 1
+    """, user_id)[0]
+    
+    active_expense = db.execute("""
+        SELECT COUNT(*) as count, COALESCE(SUM(amount), 0) as total
+        FROM recurring_transactions
+        WHERE user_id = ? AND type = 'EXPENSE' AND is_active = 1
+    """, user_id)[0]
+    
+    summary = {
+        'income_count': active_income['count'],
+        'income_total': float(active_income['total']),
+        'expense_count': active_expense['count'],
+        'expense_total': float(active_expense['total']),
+        'net': float(active_income['total'] - active_expense['total'])
+    }
+    
+    categories = db.execute("SELECT * FROM categories ORDER BY type, name")
+    
+    return render_template("recurring.html",
+        recurring_transactions=recurring_transactions,
+        summary=summary,
+        categories=categories,
+        status_filter=status_filter,
+        type_filter=type_filter
+    )
+
+
+@app.route("/recurring/toggle/<int:recurring_id>", methods=["POST"])
+@login_required
+def toggle_recurring(recurring_id):
+    """Pause or activate a recurring transaction"""
+    user_id = session["user_id"]
+    
+    recurring = db.execute(
+        "SELECT * FROM recurring_transactions WHERE id = ? AND user_id = ?",
+        recurring_id, user_id
+    )
+    
+    if not recurring:
+        flash("Recurring transaction not found", "error")
+        return redirect("/recurring")
+    
+    new_status = 0 if recurring[0]['is_active'] == 1 else 1
+    db.execute(
+        "UPDATE recurring_transactions SET is_active = ? WHERE id = ?",
+        new_status, recurring_id
+    )
+    
+    status_text = "activated" if new_status == 1 else "paused"
+    flash(f"Recurring transaction {status_text} successfully", "success")
+    return redirect("/recurring")
+
+
+@app.route("/recurring/delete/<int:recurring_id>", methods=["POST"])
+@login_required
+def delete_recurring(recurring_id):
+    """Delete a recurring transaction"""
+    user_id = session["user_id"]
+    
+    recurring = db.execute(
+        "SELECT * FROM recurring_transactions WHERE id = ? AND user_id = ?",
+        recurring_id, user_id
+    )
+    
+    if not recurring:
+        flash("Recurring transaction not found", "error")
+        return redirect("/recurring")
+    
+    db.execute("DELETE FROM recurring_transactions WHERE id = ?", recurring_id)
+    
+    flash("Recurring transaction deleted successfully", "success")
+    return redirect("/recurring")
+
+
+@app.route("/recurring/edit/<int:recurring_id>", methods=["GET", "POST"])
+@login_required
+def edit_recurring(recurring_id):
+    """Edit a recurring transaction"""
+    user_id = session["user_id"]
+    
+    recurring = db.execute(
+        "SELECT * FROM recurring_transactions WHERE id = ? AND user_id = ?",
+        recurring_id, user_id
+    )
+    
+    if not recurring:
+        flash("Recurring transaction not found", "error")
+        return redirect("/recurring")
+    
+    recurring = recurring[0]
+    
+    if request.method == "POST":
+        name = request.form.get("name")
+        amount = request.form.get("amount")
+        category = request.form.get("category")
+        frequency = request.form.get("frequency")
+        end_date = request.form.get("end_date")
+        notes = request.form.get("notes")
+        
+        if not name or not amount or not category or not frequency:
+            flash("All required fields must be filled", "error")
+            return redirect(f"/recurring/edit/{recurring_id}")
+        
+        try:
+            amount = float(amount)
+            if amount <= 0:
+                raise ValueError
+        except ValueError:
+            flash("Invalid amount", "error")
+            return redirect(f"/recurring/edit/{recurring_id}")
+        
+        if frequency not in ['DAILY', 'WEEKLY', 'BIWEEKLY', 'MONTHLY', 'YEARLY']:
+            flash("Invalid frequency", "error")
+            return redirect(f"/recurring/edit/{recurring_id}")
+        
+        db.execute("""
+            UPDATE recurring_transactions
+            SET name = ?, amount = ?, category = ?, frequency = ?, 
+                end_date = ?, notes = ?
+            WHERE id = ?
+        """, name, amount, category, frequency, 
+            end_date if end_date else None, notes, recurring_id)
+        
+        flash("Recurring transaction updated successfully", "success")
+        return redirect("/recurring")
+    
+    categories = db.execute(
+        "SELECT * FROM categories WHERE type = ? ORDER BY name",
+        recurring['type']
+    )
+    return render_template("editr.html", 
+                          recurring=recurring, 
+                          categories=categories)
+
+
+@app.route("/recurring/preview")
+@login_required
+def preview_recurring():
+    """Preview upcoming recurring transactions"""
+    user_id = session["user_id"]
+    months = int(request.args.get('months', 3))
+    
+    # Get all active recurring transactions
+    recurring_list = db.execute("""
+        SELECT id, name, amount, type, category, frequency, next_occurrence, end_date
+        FROM recurring_transactions
+        WHERE user_id = ? AND is_active = 1
+    """, user_id)
+    
+    # Generate preview for next N months
+    preview = []
+    today = datetime.now().date()
+    end_preview = today + timedelta(days=months * 30)
+    
+    for rt in recurring_list:
+        current_date = datetime.fromisoformat(str(rt['next_occurrence'])).date()
+        end_date = datetime.fromisoformat(str(rt['end_date'])).date() if rt['end_date'] else None
+        
+        while current_date <= end_preview:
+            if end_date and current_date > end_date:
+                break
+            
+            preview.append({
+                'name': rt['name'],
+                'amount': float(rt['amount']),
+                'type': rt['type'],
+                'category': rt['category'],
+                'date': current_date,
+                'formatted_date': current_date.strftime('%b %d, %Y')
+            })
+            
+            # Calculate next occurrence - FIXED
+            current_date = calculate_next_date(current_date, rt['frequency'])
+    
+    # Sort by date
+    preview.sort(key=lambda x: x['date'])
+    
+    # Calculate monthly totals
+    monthly_totals = {}
+    for item in preview:
+        month_key = item['date'].strftime('%Y-%m')
+        if month_key not in monthly_totals:
+            monthly_totals[month_key] = {'income': 0, 'expense': 0}
+        
+        if item['type'] == 'INCOME':
+            monthly_totals[month_key]['income'] += item['amount']
+        else:
+            monthly_totals[month_key]['expense'] += item['amount']
+    
+    return render_template("recurring_preview.html",
+        preview=preview,
+        monthly_totals=monthly_totals,
+        months=months
+    )
 
 
 @app.route("/register", methods=["GET", "POST"])
