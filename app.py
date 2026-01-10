@@ -1,6 +1,6 @@
 from cs50 import SQL
 from datetime import datetime, timedelta
-from flask import Flask, flash, redirect, render_template, request, session, send_file
+from flask import Flask, flash, redirect, render_template, request, session, send_file, abort
 from flask_session import Session
 from io import StringIO, BytesIO
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -275,7 +275,6 @@ def add_transaction():
                 receipt_path = filepath
 
                 
-        
         try:
             if is_recurring:
                 today = datetime.now().date()
@@ -349,7 +348,7 @@ def add_transaction():
             return render_template("addt.html", categories=categories)
     
 
-    return render_template("addt.html", categories=categories)
+    return render_template("add-transaction.html", categories=categories)
 
 @app.route("/analytics")
 def analytics():
@@ -452,6 +451,55 @@ def export_csv():
         download_name=f'transactions_{start_date}_to_{end_date}.csv'
     )
 
+@app.route("/budget/get", methods=["GET"])
+@login_required
+def get_budget():
+    """Get current budget for the user"""
+    user_id = session["user_id"]
+    
+    budget = db.execute("""
+        SELECT amount FROM budgets
+        WHERE user_id = ? AND period = 'MONTHLY' AND is_active = 1
+    """, user_id)
+    
+    if budget:
+        return json.dumps({'amount': float(budget[0]['amount'])})
+    else:
+        return json.dumps({'amount': None})
+
+
+@app.route("/budget/save", methods=["POST"])
+@login_required
+def save_budget():
+    """Save or update budget"""
+    user_id = session["user_id"]
+    
+    try:
+        data = request.get_json()
+        monthly_budget = data.get('monthlyBudget')
+        
+        if not monthly_budget or float(monthly_budget) <= 0:
+            return json.dumps({'success': False, 'error': 'Invalid budget amount'}), 400
+        
+        monthly_budget = float(monthly_budget)
+        
+        db.execute("""
+            UPDATE budgets 
+            SET is_active = 0, end_date = DATE('now')
+            WHERE user_id = ? AND period = 'MONTHLY' AND is_active = 1
+        """, user_id)
+        
+        today = datetime.now().date()
+        db.execute("""
+            INSERT INTO budgets (user_id, amount, period, start_date, is_active)
+            VALUES (?, ?, 'MONTHLY', ?, 1)
+        """, user_id, monthly_budget, today)
+        
+        return json.dumps({'success': True})
+        
+    except Exception as e:
+        return json.dumps({'success': False, 'error': str(e)}), 500
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
     """Log user in"""
@@ -503,7 +551,6 @@ def logout():
 @login_required
 def view_receipt(transaction_id):
     """Serve receipt file with authentication"""
-    from flask import send_file, abort
     
     # Verify user owns this transaction
     transaction = db.execute("""SELECT receipt_path FROM transactions WHERE id = ? AND user_id = ?""", transaction_id, session["user_id"])
@@ -698,7 +745,7 @@ def edit_recurring(recurring_id):
         "SELECT * FROM categories WHERE type = ? ORDER BY name",
         recurring['type']
     )
-    return render_template("editr.html", 
+    return render_template("edit-recurring.html", 
                           recurring=recurring, 
                           categories=categories)
 
@@ -902,7 +949,7 @@ def statistics():
     trends = calculate_trends(user_id)
 
     
-    return render_template("statistic.html",
+    return render_template("statistics.html",
         histogram_data=json.dumps(histogram_data),
         income_chart=json.dumps(income_chart),
         expense_chart=json.dumps(expense_chart),
@@ -993,7 +1040,7 @@ def transactions():
     summary = db.execute(summary_query, *params)[0]
     summary['net'] = summary['total_income'] - summary['total_expense']
     
-    return render_template("transaction.html",
+    return render_template("transactions.html",
         transactions=transactions,
         categories=categories,
         summary=summary,
@@ -1082,4 +1129,4 @@ def edit_transaction(transaction_id):
         return redirect("/transactions")
     
     categories = db.execute("SELECT * FROM categories WHERE type = ?", transaction['type'])
-    return render_template("editt.html", transaction=transaction, categories=categories)
+    return render_template("edit-transaction.html", transaction=transaction, categories=categories)

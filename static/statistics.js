@@ -1,3 +1,4 @@
+// AI inspired
 // Function that receives data from inline script
 function initializeCharts(histogramData, incomeChartData, expenseChartData) {
     // Histogram Chart

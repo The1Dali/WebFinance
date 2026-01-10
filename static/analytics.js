@@ -1,3 +1,4 @@
+// AI inspired
 // Analytics page JavaScript
 document.addEventListener('DOMContentLoaded', function() {
     // Check if data is available

@@ -1,3 +1,4 @@
+//AI inspired
 // Theme toggle function
 function toggletheme(e) {
     if (e) e.preventDefault();
@@ -52,35 +53,75 @@ function saveProfileSettings() {
     alert('Profile settings saved successfully!');
 }
 
+// ============================================================================
+// BUDGET SETTINGS - Updated to use database instead of localStorage
+// ============================================================================
+
 // Open Budget Settings Modal
-function openBudgetSettings(e) {
-    e.preventDefault();
-    var modal = new bootstrap.Modal(document.getElementById('budgetModal'));
+function openBudgetSettings(event) {
+    event.preventDefault();
     
-    document.getElementById('monthlyBudget').value = localStorage.getItem('monthlyBudget') || '';
-    document.getElementById('foodLimit').value = localStorage.getItem('foodLimit') || '';
-    document.getElementById('billsLimit').value = localStorage.getItem('billsLimit') || '';
-    document.getElementById('transportLimit').value = localStorage.getItem('transportLimit') || '';
-    document.getElementById('entertainmentLimit').value = localStorage.getItem('entertainmentLimit') || '';
-    document.getElementById('budgetAlerts').checked = localStorage.getItem('budgetAlerts') !== 'false';
+    // Load current budget from database
+    fetch('/budget/get')
+        .then(response => response.json())
+        .then(data => {
+            if (data.amount) {
+                document.getElementById('monthlyBudget').value = data.amount;
+            }
+        })
+        .catch(error => {
+            console.error('Error loading budget:', error);
+        });
     
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('budgetModal'));
     modal.show();
 }
 
 // Save Budget Settings
 function saveBudgetSettings() {
-    localStorage.setItem('monthlyBudget', document.getElementById('monthlyBudget').value);
-    localStorage.setItem('foodLimit', document.getElementById('foodLimit').value);
-    localStorage.setItem('billsLimit', document.getElementById('billsLimit').value);
-    localStorage.setItem('transportLimit', document.getElementById('transportLimit').value);
-    localStorage.setItem('entertainmentLimit', document.getElementById('entertainmentLimit').value);
-    localStorage.setItem('budgetAlerts', document.getElementById('budgetAlerts').checked);
+    const monthlyBudget = document.getElementById('monthlyBudget').value;
     
-    var modal = bootstrap.Modal.getInstance(document.getElementById('budgetModal'));
-    modal.hide();
+    // Validate
+    if (!monthlyBudget || parseFloat(monthlyBudget) <= 0) {
+        alert('Please enter a valid budget amount');
+        return;
+    }
     
-    alert('Budget settings saved successfully!');
+    // Save to server
+    fetch('/budget/save', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            monthlyBudget: parseFloat(monthlyBudget)
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Budget saved successfully!');
+            
+            // Close modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('budgetModal'));
+            modal.hide();
+            
+            // Reload page to show updated budget
+            window.location.reload();
+        } else {
+            alert('Error: ' + (data.error || 'Failed to save budget'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to save budget');
+    });
 }
+
+// ============================================================================
+// NOTIFICATION SETTINGS
+// ============================================================================
 
 // Open Notification Settings Modal
 function openNotificationSettings(e) {
@@ -118,15 +159,6 @@ function exportData(e) {
             email: localStorage.getItem('userEmail') || '',
             currency: localStorage.getItem('userCurrency') || 'USD'
         },
-        budget: {
-            monthly: localStorage.getItem('monthlyBudget') || '',
-            limits: {
-                food: localStorage.getItem('foodLimit') || '',
-                bills: localStorage.getItem('billsLimit') || '',
-                transport: localStorage.getItem('transportLimit') || '',
-                entertainment: localStorage.getItem('entertainmentLimit') || ''
-            }
-        },
         settings: {
             theme: localStorage.getItem('theme') || 'dark',
             notifications: {
@@ -158,7 +190,7 @@ function changeProfilePicture() {
 function handleLogout(e) {
     e.preventDefault();
     if (confirm('Are you sure you want to logout?')) {
-        alert('Logout functionality would redirect to login page');
+        window.location.href = '/logout';
     }
 }
 

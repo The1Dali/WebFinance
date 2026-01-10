@@ -102,23 +102,14 @@
                             <form id="budgetForm">
                                 <div class="mb-3">
                                     <label for="monthlyBudget" class="form-label">Monthly Budget</label>
-                                    <input type="number" class="form-control" id="monthlyBudget" placeholder="Enter monthly budget">
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label">Category Limits</label>
-                                    <div class="row g-2">
-                                        <div class="col-6">
-                                            <input type="number" class="form-control" placeholder="Food" id="foodLimit">
-                                        </div>
-                                        <div class="col-6">
-                                            <input type="number" class="form-control" placeholder="Bills" id="billsLimit">
-                                        </div>
-                                        <div class="col-6">
-                                            <input type="number" class="form-control" placeholder="Transport" id="transportLimit">
-                                        </div>
-                                        <div class="col-6">
-                                            <input type="number" class="form-control" placeholder="Entertainment" id="entertainmentLimit">
-                                        </div>
+                                    <div class="input-group">
+                                        <span class="input-group-text">$</span>
+                                        <input type="number" 
+                                            class="form-control" 
+                                            id="monthlyBudget" 
+                                            placeholder="Enter monthly budget"
+                                            min="0"
+                                            step="0.01">
                                     </div>
                                 </div>
                                 <div class="mb-3">
