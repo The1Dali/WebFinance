@@ -1,6 +1,6 @@
 # Financial Tracker
 
-#### Video Demo: <url>
+#### Video Demo: [<url>](https://www.youtube.com/watch?v=Ic9wtw29xuc)
 
 #### Description: 
 The financial tracker is my first ever web project.I used everything i learned in CS50x to create it and im very proud to present it in its full form and glory. It's a comprehensive web-based personal finance management application. Track your income, expenses, budgets, and gain insights into your financial health with beautiful visualizations and powerful analytics.
