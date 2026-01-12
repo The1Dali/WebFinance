@@ -90,41 +90,151 @@
                     </div>
                 </div>
             </div>
-            <!-- Budget Settings Modal -->
+            <!-- Single Budget Settings Modal with Category Limits -->
             <div class="modal fade" id="budgetModal" role="menu" tabindex="-1" aria-labelledby="budgetModalLabel" aria-hidden="true">
-                <div class="modal-dialog">
+                <div class="modal-dialog modal-lg">
                     <div class="modal-content">
                         <div class="modal-header">
-                            <h5 class="modal-title" id="budgetModalLabel">Budget Settings</h5>
+                            <h5 class="modal-title" id="budgetModalLabel">
+                                <i class="bi bi-wallet2 me-2"></i>Budget Settings
+                            </h5>
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
                         <div class="modal-body">
                             <form id="budgetForm">
-                                <div class="mb-3">
-                                    <label for="monthlyBudget" class="form-label">Monthly Budget</label>
+                                <!-- Total Monthly Budget -->
+                                <div class="mb-4">
+                                    <label for="monthlyBudget" class="form-label fw-bold">
+                                        <i class="bi bi-calendar-month me-1"></i>Total Monthly Budget
+                                    </label>
                                     <div class="input-group">
                                         <span class="input-group-text">$</span>
                                         <input type="number" 
                                             class="form-control" 
                                             id="monthlyBudget" 
-                                            placeholder="Enter monthly budget"
+                                            placeholder="Enter total monthly budget"
                                             min="0"
-                                            step="0.01">
+                                            step="0.01"
+                                            required>
+                                    </div>
+                                    <div class="form-text">
+                                        <i class="bi bi-info-circle me-1"></i>
+                                        Set your total spending limit for the month
                                     </div>
                                 </div>
-                                <div class="mb-3">
-                                    <div class="form-check form-switch">
-                                        <input class="form-check-input" type="checkbox" id="budgetAlerts" checked>
+
+                                <!-- Category Limits -->
+                                <div class="mb-4">
+                                    <label class="form-label fw-bold">
+                                        <i class="bi bi-grid-3x3-gap me-1"></i>Category Limits (Optional)
+                                    </label>
+                                    <div class="form-text mb-3">
+                                        Split your budget across categories. The sum of category limits should not exceed your total budget.
+                                    </div>
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <label for="foodLimit" class="form-label">
+                                                <i class="bi bi-basket me-1"></i>Food
+                                            </label>
+                                            <div class="input-group">
+                                                <span class="input-group-text">$</span>
+                                                <input type="number" class="form-control" id="foodLimit" placeholder="0.00" min="0" step="0.01">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="billsLimit" class="form-label">
+                                                <i class="bi bi-receipt me-1"></i>Bills
+                                            </label>
+                                            <div class="input-group">
+                                                <span class="input-group-text">$</span>
+                                                <input type="number" class="form-control" id="billsLimit" placeholder="0.00" min="0" step="0.01">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="transportLimit" class="form-label">
+                                                <i class="bi bi-bus-front me-1"></i>Transport
+                                            </label>
+                                            <div class="input-group">
+                                                <span class="input-group-text">$</span>
+                                                <input type="number" class="form-control" id="transportLimit" placeholder="0.00" min="0" step="0.01">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="entertainmentLimit" class="form-label">
+                                                <i class="bi bi-controller me-1"></i>Entertainment
+                                            </label>
+                                            <div class="input-group">
+                                                <span class="input-group-text">$</span>
+                                                <input type="number" class="form-control" id="entertainmentLimit" placeholder="0.00" min="0" step="0.01">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Current Budget Status -->
+                                <div id="currentBudgetStatus" class="mb-4 d-none">
+                                    <div class="card bg-dark border-secondary">
+                                        <div class="card-body">
+                                            <h6 class="card-title mb-3">Current Month Status</h6>
+                                            <div class="d-flex justify-content-between mb-2">
+                                                <span>Spent:</span>
+                                                <span class="fw-bold" id="statusSpent">$0.00</span>
+                                            </div>
+                                            <div class="d-flex justify-content-between mb-2">
+                                                <span>Remaining:</span>
+                                                <span class="fw-bold" id="statusRemaining">$0.00</span>
+                                            </div>
+                                            <div class="progress mt-2" style="height: 8px;">
+                                                <div id="statusProgress" 
+                                                    class="progress-bar" 
+                                                    role="progressbar" 
+                                                    style="width: 0%">
+                                                </div>
+                                            </div>
+                                            <!-- Category Breakdown -->
+                                            <div id="categoryBreakdown" class="mt-3 pt-3 border-top">
+                                                <!-- Populated by JavaScript -->
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Budget Alerts -->
+                                <div class="mb-4">
+                                    <label class="form-label fw-bold">
+                                        <i class="bi bi-bell me-1"></i>Alert Settings
+                                    </label>
+                                    <div class="form-check form-switch mb-2">
+                                        <input class="form-check-input" 
+                                            type="checkbox" 
+                                            id="budgetAlerts" 
+                                            checked>
                                         <label class="form-check-label" for="budgetAlerts">
                                             Enable budget alerts
                                         </label>
                                     </div>
+                                    <div class="form-text ms-4">
+                                        Get notified when you reach 80% of your total or category budgets
+                                    </div>
+                                </div>
+
+                                <!-- Quick Actions -->
+                                <div class="d-grid gap-2" id="budgetActions" style="display: none !important;">
+                                    <button type="button" 
+                                            class="btn btn-outline-danger btn-sm" 
+                                            onclick="deleteBudget()">
+                                        <i class="bi bi-trash me-1"></i>Remove Entire Budget
+                                    </button>
                                 </div>
                             </form>
                         </div>
                         <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                            <button type="button" class="btn btn-primary" onclick="saveBudgetSettings()">Save Changes</button>
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                <i class="bi bi-x-lg me-1"></i>Cancel
+                            </button>
+                            <button type="button" class="btn btn-primary" onclick="saveBudgetSettings()">
+                                <i class="bi bi-check-lg me-1"></i>Save Budget
+                            </button>
                         </div>
                     </div>
                 </div>

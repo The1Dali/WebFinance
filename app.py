@@ -454,39 +454,68 @@ def export_csv():
 @app.route("/budget/get", methods=["GET"])
 @login_required
 def get_budget():
-    """Get current budget for the user"""
+    """Get current budget settings for the user"""
     user_id = session["user_id"]
-    
+
     budget = db.execute("""
-        SELECT amount FROM budgets
-        WHERE user_id = ? AND period = 'MONTHLY' AND is_active = 1
+        SELECT amount, start_date, end_date
+        FROM budgets
+        WHERE user_id = ? AND is_active = 1
+        LIMIT 1
     """, user_id)
     
-    if budget:
-        return json.dumps({'amount': float(budget[0]['amount'])})
-    else:
-        return json.dumps({'amount': None})
+    category_limits = db.execute("""
+        SELECT category, limit_amount
+        FROM category_budgets
+        WHERE user_id = ? AND is_active = 1
+    """, user_id)
+    
+    budget_data = {
+        'monthlyBudget': float(budget[0]['amount']) if budget else None,
+        'start_date': budget[0]['start_date'] if budget else None,
+        'end_date': budget[0]['end_date'] if budget else None,
+        'categories': {}
+    }
+    
+    for cat in category_limits:
+        budget_data['categories'][cat['category']] = float(cat['limit_amount'])
+    
+    return json.dumps(budget_data)
 
 
 @app.route("/budget/save", methods=["POST"])
 @login_required
 def save_budget():
-    """Save or update budget"""
+    """Save or update the single budget with category limits"""
     user_id = session["user_id"]
     
     try:
         data = request.get_json()
         monthly_budget = data.get('monthlyBudget')
+        category_limits = data.get('categoryLimits', {})
         
         if not monthly_budget or float(monthly_budget) <= 0:
             return json.dumps({'success': False, 'error': 'Invalid budget amount'}), 400
         
         monthly_budget = float(monthly_budget)
         
+        total_category_limits = sum(float(v) for v in category_limits.values() if v)
+        if total_category_limits > monthly_budget:
+            return json.dumps({
+                'success': False, 
+                'error': f'Category limits (${total_category_limits:.2f}) exceed total budget (${monthly_budget:.2f})'
+            }), 400
+        
         db.execute("""
             UPDATE budgets 
             SET is_active = 0, end_date = DATE('now')
-            WHERE user_id = ? AND period = 'MONTHLY' AND is_active = 1
+            WHERE user_id = ? AND is_active = 1
+        """, user_id)
+        
+        db.execute("""
+            UPDATE category_budgets
+            SET is_active = 0
+            WHERE user_id = ? AND is_active = 1
         """, user_id)
         
         today = datetime.now().date()
@@ -495,7 +524,113 @@ def save_budget():
             VALUES (?, ?, 'MONTHLY', ?, 1)
         """, user_id, monthly_budget, today)
         
-        return json.dumps({'success': True})
+        for category, limit in category_limits.items():
+            if limit and float(limit) > 0:
+                db.execute("""
+                    INSERT INTO category_budgets (user_id, category, limit_amount, is_active)
+                    VALUES (?, ?, ?, 1)
+                """, user_id, category, float(limit))
+        
+        return json.dumps({'success': True, 'message': 'Budget saved successfully'})
+        
+    except Exception as e:
+        return json.dumps({'success': False, 'error': str(e)}), 500
+
+
+@app.route("/budget/status", methods=["GET"])
+@login_required
+def budget_status():
+    """Get current budget status and spending"""
+    user_id = session["user_id"]
+    
+    budget = db.execute("""
+        SELECT amount, start_date FROM budgets
+        WHERE user_id = ? AND is_active = 1
+        LIMIT 1
+    """, user_id)
+    
+    if not budget:
+        return json.dumps({'hasBudget': False})
+    
+    budget_amount = float(budget[0]['amount'])
+    start_date = budget[0]['start_date']
+    
+    today = datetime.now()
+    month_start = today.replace(day=1)
+    
+    monthly_expense = db.execute("""
+        SELECT COALESCE(SUM(amount), 0) as total
+        FROM transactions
+        WHERE user_id = ? AND type = 'EXPENSE'
+        AND time >= ?
+    """, user_id, month_start)[0]['total']
+    
+    spent = float(monthly_expense)
+    remaining = budget_amount - spent
+    percentage = (spent / budget_amount * 100) if budget_amount > 0 else 0
+    
+    category_limits = db.execute("""
+        SELECT category, limit_amount
+        FROM category_budgets
+        WHERE user_id = ? AND is_active = 1
+    """, user_id)
+    
+    category_spending = db.execute("""
+        SELECT category, SUM(amount) as total
+        FROM transactions
+        WHERE user_id = ? AND type = 'EXPENSE'
+        AND time >= ?
+        GROUP BY category
+        ORDER BY total DESC
+    """, user_id, month_start)
+    
+    limits_map = {cat['category']: float(cat['limit_amount']) for cat in category_limits}
+    
+    categories = []
+    for cat in category_spending:
+        cat_spent = float(cat['total'])
+        cat_limit = limits_map.get(cat['category'], 0)
+        cat_percentage = (cat_spent / cat_limit * 100) if cat_limit > 0 else 0
+        
+        categories.append({
+            'name': cat['category'],
+            'spent': cat_spent,
+            'limit': cat_limit,
+            'percentage': round(cat_percentage, 1),
+            'isOverBudget': cat_spent > cat_limit if cat_limit > 0 else False
+        })
+    
+    return json.dumps({
+        'hasBudget': True,
+        'total': budget_amount,
+        'spent': spent,
+        'remaining': remaining,
+        'percentage': round(percentage, 1),
+        'categories': categories,
+        'isOverBudget': spent > budget_amount
+    })
+
+
+@app.route("/budget/delete", methods=["POST"])
+@login_required
+def delete_budget():
+    """Delete/deactivate current budget and all category budgets"""
+    user_id = session["user_id"]
+    
+    try:
+        db.execute("""
+            UPDATE budgets 
+            SET is_active = 0, end_date = DATE('now')
+            WHERE user_id = ? AND is_active = 1
+        """, user_id)
+        
+        db.execute("""
+            UPDATE category_budgets
+            SET is_active = 0
+            WHERE user_id = ? AND is_active = 1
+        """, user_id)
+        
+        return json.dumps({'success': True, 'message': 'Budget removed successfully'})
         
     except Exception as e:
         return json.dumps({'success': False, 'error': str(e)}), 500

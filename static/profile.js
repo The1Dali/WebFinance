@@ -53,40 +53,155 @@ function saveProfileSettings() {
     alert('Profile settings saved successfully!');
 }
 
-// ============================================================================
-// BUDGET SETTINGS - Updated to use database instead of localStorage
-// ============================================================================
-
-// Open Budget Settings Modal
 function openBudgetSettings(event) {
     event.preventDefault();
     
-    // Load current budget from database
-    fetch('/budget/get')
-        .then(response => response.json())
-        .then(data => {
-            if (data.amount) {
-                document.getElementById('monthlyBudget').value = data.amount;
-            }
-        })
-        .catch(error => {
-            console.error('Error loading budget:', error);
-        });
-    
-    // Show modal
+    // Show the modal first
     const modal = new bootstrap.Modal(document.getElementById('budgetModal'));
     modal.show();
+    
+    // Load current budget data and status
+    Promise.all([
+        fetch('/budget/get').then(r => r.json()),
+        fetch('/budget/status').then(r => r.json())
+    ])
+    .then(([budgetData, statusData]) => {
+        // Populate main budget
+        if (budgetData.monthlyBudget) {
+            document.getElementById('monthlyBudget').value = budgetData.monthlyBudget;
+            
+            // Show delete button if budget exists
+            const actionsDiv = document.getElementById('budgetActions');
+            if (actionsDiv) {
+                actionsDiv.style.display = 'block';
+            }
+        }
+        
+        // Populate category limits
+        if (budgetData.categories) {
+            if (budgetData.categories['Food']) {
+                document.getElementById('foodLimit').value = budgetData.categories['Food'];
+            }
+            if (budgetData.categories['Bills']) {
+                document.getElementById('billsLimit').value = budgetData.categories['Bills'];
+            }
+            if (budgetData.categories['Transport']) {
+                document.getElementById('transportLimit').value = budgetData.categories['Transport'];
+            }
+            if (budgetData.categories['Entertainment']) {
+                document.getElementById('entertainmentLimit').value = budgetData.categories['Entertainment'];
+            }
+        }
+        
+        // Show current status if budget exists
+        if (statusData.hasBudget) {
+            const statusDiv = document.getElementById('currentBudgetStatus');
+            if (statusDiv) {
+                statusDiv.classList.remove('d-none');
+                
+                document.getElementById('statusSpent').textContent = `$${statusData.spent.toFixed(2)}`;
+                document.getElementById('statusRemaining').textContent = `$${statusData.remaining.toFixed(2)}`;
+                
+                const progressBar = document.getElementById('statusProgress');
+                progressBar.style.width = `${Math.min(statusData.percentage, 100)}%`;
+                
+                // Update progress bar color
+                progressBar.classList.remove('bg-success', 'bg-warning', 'bg-danger');
+                if (statusData.percentage < 70) {
+                    progressBar.classList.add('bg-success');
+                } else if (statusData.percentage < 90) {
+                    progressBar.classList.add('bg-warning');
+                } else {
+                    progressBar.classList.add('bg-danger');
+                }
+                
+                // Update remaining text color
+                const remainingEl = document.getElementById('statusRemaining');
+                remainingEl.classList.remove('text-success', 'text-danger');
+                remainingEl.classList.add(statusData.remaining >= 0 ? 'text-success' : 'text-danger');
+                
+                // Display category breakdowns
+                if (statusData.categories && statusData.categories.length > 0) {
+                    displayCategoryBreakdown(statusData.categories);
+                }
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Error loading budget:', error);
+    });
 }
 
-// Save Budget Settings
+function displayCategoryBreakdown(categories) {
+    const breakdownDiv = document.getElementById('categoryBreakdown');
+    if (!breakdownDiv) return;
+    
+    let html = '<h6 class="mb-3">Category Breakdown</h6>';
+    
+    categories.forEach(cat => {
+        if (cat.limit > 0) {
+            const percentage = Math.min(cat.percentage, 100);
+            let colorClass = 'success';
+            if (cat.percentage >= 90) colorClass = 'danger';
+            else if (cat.percentage >= 70) colorClass = 'warning';
+            
+            html += `
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between mb-1">
+                        <small class="fw-bold">${cat.name}</small>
+                        <small>$${cat.spent.toFixed(2)} / $${cat.limit.toFixed(2)}</small>
+                    </div>
+                    <div class="progress" style="height: 6px;">
+                        <div class="progress-bar bg-${colorClass}" 
+                             role="progressbar" 
+                             style="width: ${percentage}%">
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+    });
+    
+    breakdownDiv.innerHTML = html;
+}
+
 function saveBudgetSettings() {
     const monthlyBudget = document.getElementById('monthlyBudget').value;
+    const budgetAlerts = document.getElementById('budgetAlerts').checked;
     
-    // Validate
+    // Get category limits
+    const categoryLimits = {};
+    const foodLimit = document.getElementById('foodLimit').value;
+    const billsLimit = document.getElementById('billsLimit').value;
+    const transportLimit = document.getElementById('transportLimit').value;
+    const entertainmentLimit = document.getElementById('entertainmentLimit').value;
+    
+    if (foodLimit && parseFloat(foodLimit) > 0) categoryLimits['Food'] = parseFloat(foodLimit);
+    if (billsLimit && parseFloat(billsLimit) > 0) categoryLimits['Bills'] = parseFloat(billsLimit);
+    if (transportLimit && parseFloat(transportLimit) > 0) categoryLimits['Transport'] = parseFloat(transportLimit);
+    if (entertainmentLimit && parseFloat(entertainmentLimit) > 0) categoryLimits['Entertainment'] = parseFloat(entertainmentLimit);
+    
+    // Validate input
     if (!monthlyBudget || parseFloat(monthlyBudget) <= 0) {
-        alert('Please enter a valid budget amount');
+        showAlert('Please enter a valid budget amount', 'danger');
         return;
     }
+    
+    // Check that category limits don't exceed total budget
+    const totalCategoryLimits = Object.values(categoryLimits).reduce((a, b) => a + b, 0);
+    const totalBudget = parseFloat(monthlyBudget);
+    
+    if (totalCategoryLimits > totalBudget) {
+        showAlert(`Category limits ($${totalCategoryLimits.toFixed(2)}) exceed total budget ($${totalBudget.toFixed(2)})`, 'danger');
+        return;
+    }
+    
+    // Prepare data
+    const budgetData = {
+        monthlyBudget: totalBudget,
+        budgetAlerts: budgetAlerts,
+        categoryLimits: categoryLimits
+    };
     
     // Save to server
     fetch('/budget/save', {
@@ -94,31 +209,154 @@ function saveBudgetSettings() {
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-            monthlyBudget: parseFloat(monthlyBudget)
-        })
+        body: JSON.stringify(budgetData)
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert('Budget saved successfully!');
+            showAlert('Budget settings saved successfully!', 'success');
             
             // Close modal
             const modal = bootstrap.Modal.getInstance(document.getElementById('budgetModal'));
             modal.hide();
             
             // Reload page to show updated budget
-            window.location.reload();
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
         } else {
-            alert('Error: ' + (data.error || 'Failed to save budget'));
+            showAlert(data.error || 'Failed to save budget settings', 'danger');
         }
     })
     .catch(error => {
-        console.error('Error:', error);
-        alert('Failed to save budget');
+        console.error('Error saving budget:', error);
+        showAlert('Failed to save budget settings', 'danger');
     });
 }
 
+function deleteBudget() {
+    if (!confirm('Are you sure you want to remove your budget? This will also remove all category limits. This action cannot be undone.')) {
+        return;
+    }
+    
+    fetch('/budget/delete', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('Budget removed successfully!', 'success');
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        } else {
+            showAlert(data.error || 'Failed to remove budget', 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error removing budget:', error);
+        showAlert('Failed to remove budget', 'danger');
+    });
+}
+
+// Helper function to show alerts
+function showAlert(message, type) {
+    // Create alert element
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.setAttribute('role', 'alert');
+    alertDiv.innerHTML = `
+        <i class="bi bi-info-circle-fill me-2"></i>
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    `;
+    
+    // Find or create flash container
+    let flashContainer = document.querySelector('.flash-container');
+    if (!flashContainer) {
+        flashContainer = document.createElement('div');
+        flashContainer.className = 'flash-container';
+        const main = document.querySelector('main');
+        main.parentNode.insertBefore(flashContainer, main);
+    }
+    
+    // Clear existing alerts and add new one
+    flashContainer.innerHTML = '';
+    flashContainer.appendChild(alertDiv);
+    
+    // Auto-dismiss after 5 seconds
+    setTimeout(() => {
+        alertDiv.classList.remove('show');
+        setTimeout(() => alertDiv.remove(), 150);
+    }, 5000);
+}
+
+// Load budget status on page load (for dashboard)
+document.addEventListener('DOMContentLoaded', function() {
+    // Check if we're on a page that needs budget status
+    const budgetWidget = document.getElementById('budgetWidget');
+    if (budgetWidget) {
+        loadBudgetStatus();
+    }
+});
+
+function loadBudgetStatus() {
+    fetch('/budget/status')
+        .then(response => response.json())
+        .then(data => {
+            if (data.hasBudget) {
+                updateBudgetWidget(data);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading budget status:', error);
+        });
+}
+
+function updateBudgetWidget(data) {
+    const budgetWidget = document.getElementById('budgetWidget');
+    if (!budgetWidget) return;
+    
+    // Update progress bar
+    const progressBar = budgetWidget.querySelector('.progress-bar');
+    if (progressBar) {
+        progressBar.style.width = `${Math.min(data.percentage, 100)}%`;
+        
+        // Change color based on percentage
+        progressBar.classList.remove('bg-success', 'bg-warning', 'bg-danger');
+        if (data.percentage < 70) {
+            progressBar.classList.add('bg-success');
+        } else if (data.percentage < 90) {
+            progressBar.classList.add('bg-warning');
+        } else {
+            progressBar.classList.add('bg-danger');
+        }
+    }
+    
+    // Update text
+    const budgetText = budgetWidget.querySelector('.budget-text');
+    if (budgetText) {
+        budgetText.innerHTML = `
+            <strong>$${data.spent.toFixed(2)}</strong> of 
+            <strong>$${data.total.toFixed(2)}</strong> spent
+            ${data.isOverBudget ? '<span class="text-danger ms-2">(Over Budget!)</span>' : ''}
+        `;
+    }
+    
+    // Update remaining amount
+    const remainingText = budgetWidget.querySelector('.remaining-text');
+    if (remainingText) {
+        const remainingClass = data.remaining >= 0 ? 'text-success' : 'text-danger';
+        remainingText.innerHTML = `
+            <span class="${remainingClass}">
+                ${data.remaining >= 0 ? '$' + data.remaining.toFixed(2) + ' remaining' : 'Over by $' + Math.abs(data.remaining).toFixed(2)}
+            </span>
+        `;
+    }
+}
 // ============================================================================
 // NOTIFICATION SETTINGS
 // ============================================================================
