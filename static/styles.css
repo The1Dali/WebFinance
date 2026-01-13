@@ -23,7 +23,7 @@
     --primary-gradient: linear-gradient(135deg, #2d4538 0%, #3d5548 100%);
     --accent-gradient: linear-gradient(135deg, #e5b573 0%, #d4a05d 100%);
     --subtle-gradient: linear-gradient(135deg, rgba(229, 181, 115, 0.1) 0%, rgba(212, 160, 93, 0.05) 100%);
-    --background-gradient: linear-gradient(135deg, #1f3027 0%, #2d4538 50%, #3d5548 100%);
+    --background-gradient: linear-gradient(135deg, #1a2820 0%, #2d4538 30%, #3d5548 70%, #4d6558 100%);
     
     /* === SEMANTIC COLORS === */
     --success-color: #4ade80;
@@ -115,13 +115,13 @@
     --border-color: #e7e5e4;
     --border-accent: rgba(229, 181, 115, 0.4);
     
-    --card-bg: #ffffff;
-    --card-hover: #f5f5f4;
+    --card-bg: rgba(245, 240, 232, 0.7);
+    --card-hover: rgba(232, 220, 200, 0.9);
     
-    --table-bg: #ffffff;
+    --table-bg: rgba(245, 240, 232, 0.5);
     --table-hover: rgba(229, 181, 115, 0.1);
     
-    --background-gradient: linear-gradient(135deg, #fafaf9 0%, #f5f5f4 50%, #e7e5e4 100%);
+    --background-gradient: linear-gradient(135deg, #f5f0e8 0%, #e8dcc8 30%, #dcc9a8 70%, #d4a05d 100%);
     --primary-gradient: linear-gradient(135deg, #3d5548 0%, #2d4538 100%);
 }
 
@@ -611,6 +611,12 @@ main {
     overflow: hidden;
 }
 
+[data-bs-theme="light"] .btn-primary,
+[data-bs-theme="light"] .btn.btn-primary {
+    color: #1a2820 !important;
+    text-shadow: 0 1px 2px rgba(255, 255, 255, 0.3);
+}
+
 .btn-primary::before {
     content: '';
     position: absolute;
@@ -633,6 +639,10 @@ main {
     color: var(--forest-green-dark) !important;
 }
 
+[data-bs-theme="light"] .btn-primary:hover {
+    color: #1a2820 !important;
+}
+
 .btn-primary:active {
     transform: translateY(0);
 }
@@ -647,11 +657,21 @@ main {
     font-weight: 600;
 }
 
+[data-bs-theme="light"] .btn-secondary,
+[data-bs-theme="light"] .btn.btn-secondary {
+    color: #fafaf9 !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
 .btn-secondary:hover {
     background: linear-gradient(135deg, #3d5548 0%, #4d6558 100%) !important;
     transform: translateY(-2px);
     box-shadow: var(--shadow-lg);
     color: var(--golden-beige-light) !important;
+}
+
+[data-bs-theme="light"] .btn-secondary:hover {
+    color: #ffffff !important;
 }
 
 .btn-outline-primary,
@@ -664,11 +684,21 @@ main {
     font-weight: 600;
 }
 
+[data-bs-theme="light"] .btn-outline-primary,
+[data-bs-theme="light"] .btn.btn-outline-primary {
+    border-color: var(--forest-green) !important;
+    color: var(--forest-green) !important;
+}
+
 .btn-outline-primary:hover {
     background: var(--accent-gradient) !important;
     color: var(--forest-green-dark) !important;
     border-color: transparent !important;
     transform: translateY(-2px);
+}
+
+[data-bs-theme="light"] .btn-outline-primary:hover {
+    color: #1a2820 !important;
 }
 
 .btn-outline-secondary,
@@ -681,10 +711,20 @@ main {
     font-weight: 600;
 }
 
+[data-bs-theme="light"] .btn-outline-secondary,
+[data-bs-theme="light"] .btn.btn-outline-secondary {
+    border-color: var(--forest-green) !important;
+    color: var(--forest-green) !important;
+}
+
 .btn-outline-secondary:hover {
     background: var(--primary-gradient) !important;
     color: var(--golden-beige) !important;
     border-color: transparent !important;
+}
+
+[data-bs-theme="light"] .btn-outline-secondary:hover {
+    color: #fafaf9 !important;
 }
 
 .btn-success,
@@ -696,10 +736,20 @@ main {
     border-radius: var(--radius-md);
 }
 
+[data-bs-theme="light"] .btn-success,
+[data-bs-theme="light"] .btn.btn-success {
+    color: #1a2820 !important;
+    text-shadow: 0 1px 2px rgba(255, 255, 255, 0.3);
+}
+
 .btn-success:hover {
     background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%) !important;
     transform: translateY(-2px);
     color: white !important;
+}
+
+[data-bs-theme="light"] .btn-success:hover {
+    color: #1a2820 !important;
 }
 
 .btn-danger,
@@ -711,10 +761,20 @@ main {
     border-radius: var(--radius-md);
 }
 
+[data-bs-theme="light"] .btn-danger,
+[data-bs-theme="light"] .btn.btn-danger {
+    color: #fafaf9 !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
 .btn-danger:hover {
     background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%) !important;
     transform: translateY(-2px);
     color: white !important;
+}
+
+[data-bs-theme="light"] .btn-danger:hover {
+    color: #ffffff !important;
 }
 
 .btn-warning,
@@ -726,10 +786,20 @@ main {
     border-radius: var(--radius-md);
 }
 
+[data-bs-theme="light"] .btn-warning,
+[data-bs-theme="light"] .btn.btn-warning {
+    color: #1a2820 !important;
+    text-shadow: 0 1px 2px rgba(255, 255, 255, 0.3);
+}
+
 .btn-warning:hover {
     background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
     transform: translateY(-2px);
     color: var(--forest-green-dark) !important;
+}
+
+[data-bs-theme="light"] .btn-warning:hover {
+    color: #1a2820 !important;
 }
 
 .btn-light {
@@ -746,6 +816,7 @@ main {
 /* ============================================================================
    11. CARDS
    ============================================================================ */
+
 
 .card {
     background: var(--card-bg) !important;
@@ -793,10 +864,28 @@ main {
 }
 
 /* Budget Card Specific */
+#budgetWidget {
+    max-width: 100% !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+}
+
 #budgetWidget .card-header,
 .bg-primary {
     background: var(--accent-gradient) !important;
     color: var(--forest-green-dark) !important;
+}
+
+/* Ensure all cards have consistent width */
+.card {
+    box-sizing: border-box;
+    width: 100%;
+}
+
+.card.shadow-sm {
+    box-shadow: var(--shadow-md) !important;
 }
 
 /* ============================================================================
@@ -840,8 +929,13 @@ main {
     border-radius: var(--radius-md) 0 0 var(--radius-md);
 }
 
+/* Fix dropdown arrow for select elements */
 .form-select {
     background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23e5b573' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 0.75rem center !important;
+    background-size: 16px 12px !important;
+    padding-right: 2.5rem !important;
 }
 
 /* ============================================================================
@@ -851,10 +945,13 @@ main {
 .table {
     color: var(--text-primary) !important;
     background-color: transparent !important;
+    --bs-table-bg: transparent !important;
+    --bs-table-striped-bg: rgba(229, 181, 115, 0.05) !important;
+    --bs-table-hover-bg: rgba(229, 181, 115, 0.1) !important;
 }
 
 .table thead {
-    background: var(--subtle-gradient) !important;
+    background: var(--primary-gradient) !important;
     color: var(--golden-beige) !important;
     font-weight: 700;
     text-transform: uppercase;
@@ -863,32 +960,144 @@ main {
 }
 
 .table thead th {
-    border-bottom: 2px solid var(--border-accent) !important;
+    border-bottom: 2px solid var(--golden-beige) !important;
     color: var(--golden-beige) !important;
+    background: var(--primary-gradient) !important;
+    padding: 1rem !important;
 }
 
 .table tbody {
-    background: var(--table-bg) !important;
+    background: var(--bg-secondary) !important;
 }
 
 .table tbody tr {
     transition: all var(--transition-fast);
     border-bottom: 1px solid var(--border-color) !important;
     color: var(--text-primary) !important;
+    background-color: var(--bg-secondary) !important;
 }
 
 .table tbody tr:hover {
-    background: var(--table-hover) !important;
+    background: var(--subtle-gradient) !important;
     transform: scale(1.01);
 }
 
 .table tbody td {
     color: var(--text-primary) !important;
+    padding: 1rem !important;
 }
 
 .table-dark {
     background-color: var(--bg-secondary) !important;
     color: var(--text-primary) !important;
+}
+
+.table-striped tbody tr:nth-of-type(odd) {
+    background-color: rgba(229, 181, 115, 0.05) !important;
+}
+
+/* Light mode table adjustments */
+[data-bs-theme="light"] .table thead {
+    background: linear-gradient(135deg, #4d6558 0%, #3d5548 100%) !important;
+    color: #fafaf9 !important;
+}
+
+[data-bs-theme="light"] .table thead th {
+    color: #fafaf9 !important;
+    border-bottom: 2px solid #fafaf9 !important;
+}
+
+[data-bs-theme="light"] .table tbody {
+    background: rgba(245, 240, 232, 0.5) !important;
+}
+
+[data-bs-theme="light"] .table tbody tr {
+    background-color: rgba(245, 240, 232, 0.5) !important;
+}
+
+[data-bs-theme="light"] .table tbody tr:hover {
+    background: rgba(229, 181, 115, 0.2) !important;
+}
+
+/* ============================================================================
+   13. TABLES
+   ============================================================================ */
+
+.table {
+    color: var(--text-primary) !important;
+    background-color: transparent !important;
+    --bs-table-bg: transparent !important;
+    --bs-table-striped-bg: rgba(229, 181, 115, 0.05) !important;
+    --bs-table-hover-bg: rgba(229, 181, 115, 0.1) !important;
+}
+
+.table thead {
+    background: var(--primary-gradient) !important;
+    color: var(--golden-beige) !important;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 0.875rem;
+    letter-spacing: 0.05em;
+}
+
+.table thead th {
+    border-bottom: 2px solid var(--golden-beige) !important;
+    color: var(--golden-beige) !important;
+    background: var(--primary-gradient) !important;
+    padding: 1rem !important;
+}
+
+.table tbody {
+    background: var(--bg-secondary) !important;
+}
+
+.table tbody tr {
+    transition: all var(--transition-fast);
+    border-bottom: 1px solid var(--border-color) !important;
+    color: var(--text-primary) !important;
+    background-color: var(--bg-secondary) !important;
+}
+
+.table tbody tr:hover {
+    background: var(--subtle-gradient) !important;
+    transform: scale(1.01);
+}
+
+.table tbody td {
+    color: var(--text-primary) !important;
+    padding: 1rem !important;
+}
+
+.table-dark {
+    background-color: var(--bg-secondary) !important;
+    color: var(--text-primary) !important;
+}
+
+.table-striped tbody tr:nth-of-type(odd) {
+    background-color: rgba(229, 181, 115, 0.05) !important;
+}
+
+/* Light mode table adjustments */
+[data-bs-theme="light"] .table thead {
+    background: linear-gradient(135deg, #4d6558 0%, #3d5548 100%) !important;
+    color: #fafaf9 !important;
+}
+
+[data-bs-theme="light"] .table thead th {
+    color: #fafaf9 !important;
+    border-bottom: 2px solid #fafaf9 !important;
+}
+
+[data-bs-theme="light"] .table tbody {
+    background: rgba(255, 255, 255, 0.7) !important;
+}
+
+[data-bs-theme="light"] .table tbody tr {
+    background-color: rgba(255, 255, 255, 0.7) !important;
+}
+
+[data-bs-theme="light"] .table tbody tr:hover {
+    background: rgba(229, 181, 115, 0.2) !important;
 }
 
 /* ============================================================================
@@ -1189,4 +1398,45 @@ main {
 /* Remove navbar styling for non-logged in users */
 .navbar-nav {
     display: none;
+}
+
+/* ============================================================================
+   22. HEADER & LOGO STYLES
+   ============================================================================ */
+
+header {
+    background: transparent !important;
+    backdrop-filter: none !important;
+    border-bottom: none !important;
+    box-shadow: none !important;
+    border-radius: 0;
+}
+
+header .icon {
+    margin-left: 1rem;
+}
+
+header .icon img {
+    width: 75px;
+    height: 75px;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 2px solid var(--accent-gradient--);
+    transition: all var(--transition-normal);
+}
+
+header .icon img:hover {
+    transform: scale(1.05);
+    border-color: var(--golden-beige);
+}
+
+/* Profile picture in header */
+header .rounded-circle {
+    border: 2px solid var(--border-accent);
+    transition: all var(--transition-normal);
+}
+
+header .rounded-circle:hover {
+    border-color: var(--golden-beige);
+    transform: scale(1.05);
 }
