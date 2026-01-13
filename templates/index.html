@@ -4,6 +4,10 @@
     Dashboard
 {% endblock %}
 
+{% block head %}
+<script src="static/advisor.js"></script>
+{% endblock %}
+
 {% block main %}
     <!-- Summary Cards -->
     <section class="container mb-5">
@@ -67,7 +71,7 @@
             <div class="mb-3">
                 <div class="d-flex justify-content-between mb-2">
                     <span class="budget-text">
-                        <strong>${{ "%.2f"|format(budget.spent) }}</strong> of 
+                        <strong>${{ "%.2f"|format(budget.spent) }}</strong> of
                         <strong>${{ "%.2f"|format(budget.total) }}</strong> spent
                     </span>
                     <span class="fw-bold">{{ budget.percentage }}%</span>
@@ -212,6 +216,68 @@
         </div>
         {% endif %}
     </section>
+
+    <!-- AI Assistant Widget -->
+    <div id="aiAssistant" class="ai-assistant-widget">
+        <!-- Collapsed State: Floating Button -->
+        <button id="aiToggleBtn" class="ai-toggle-btn position-fixed bottom-0 start-0 m-4 shadow" 
+                onclick="toggleAIChat()" 
+                style="z-index: 1000;">
+            <img class="advisorimg" src="static/advisor.png" alt="Advisor">
+        </button>
+
+        <!-- Expanded State: Chat Window -->
+        <div id="aiChatWindow" class="ai-chat-window position-fixed bottom-0 start-0 m-4 shadow-lg" 
+            style="display: none; z-index: 1001;">
+            <!-- Header -->
+            <div class="ai-chat-header p-3 d-flex justify-content-between align-items-center">
+                <div>
+                    <h6 class="mb-0 fw-bold">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="me-2" style="display: inline-block; vertical-align: middle;">
+                            <path d="M17 8.5C17 5.5 14.5 3 11.5 3C11.5 3 11.5 6 11.5 8.5C11.5 11 14 13.5 17 13.5C17 13.5 17 11.5 17 8.5Z" fill="currentColor"/>
+                        </svg>
+                        Financial Advisor
+                    </h6>
+                    <small class="ai-subtitle">Your personal finance assistant</small>
+                </div>
+                <button class="btn btn-link p-0 ai-close-btn" onclick="toggleAIChat()">
+                    <i class="bi bi-x-lg fs-5"></i>
+                </button>
+            </div>
+
+            <!-- Chat Messages Area -->
+            <div id="aiChatMessages" class="ai-chat-messages p-3">
+                <!-- Welcome Message -->
+                <div class="ai-message ai-message-bot mb-3">
+                    <div class="d-flex align-items-start gap-2">
+                        <div class="ai-avatar d-flex align-items-center justify-content-center">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M17 8.5C17 5.5 14.5 3 11.5 3C11.5 3 11.5 6 11.5 8.5C11.5 11 14 13.5 17 13.5C17 13.5 17 11.5 17 8.5Z" fill="currentColor"/>
+                            </svg>
+                        </div>
+                        <div class="ai-message-content p-3">
+                            <p class="mb-0">Hello! I'm your financial advisor. Ask me anything about your spending, budget, or if you can afford something specific.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Input Area -->
+            <div class="ai-chat-input p-3">
+                <form id="aiChatForm" onsubmit="sendAIMessage(event)" class="d-flex gap-2">
+                    <input type="text" 
+                        id="aiMessageInput" 
+                        class="form-control" 
+                        placeholder="Ask about your finances..."
+                        autocomplete="off"
+                        required>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-send-fill"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
 
     <!-- Floating Add Button -->
     <a href="/add" class="btn btn-primary position-fixed bottom-0 end-0 m-4 rectangle shadow">

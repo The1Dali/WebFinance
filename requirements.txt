@@ -1,6 +1,7 @@
+APScheduler==3.10.4
+cs50==9.2.5
 Flask==2.3.3
 Flask-Session==0.5.0
-cs50==9.2.5
-Werkzeug==2.3.7
-APScheduler==3.10.4
 python-dateutil==2.8.2
+requests==2.31.0
+Werkzeug==2.3.7
