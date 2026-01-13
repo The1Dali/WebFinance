@@ -1,9 +1,4 @@
 /* ============================================================================
-   FINANCIAL TRACKER - COMPLETE STYLES (FIXED)
-   Forest Green & Golden Beige Theme
-   ============================================================================ */
-
-/* ============================================================================
    1. CSS VARIABLES (DESIGN TOKENS)
    ============================================================================ */
 
@@ -161,7 +156,7 @@ main {
 }
 
 /* ============================================================================
-   5. YOUR EXISTING CUSTOM STYLES (PRESERVED)
+   5. CUSTOM STYLES
    ============================================================================ */
 
 .addb {
@@ -297,6 +292,7 @@ main {
    7. AUTH PAGES
    ============================================================================ */
 
+
 .auth-container {
     position: relative;
     min-height: 100vh;
@@ -308,9 +304,9 @@ main {
 }
 
 .auth-card {
-    background: rgba(229, 181, 115, 0.05) !important;
-    backdrop-filter: blur(15px);
-    border: 1px solid rgba(229, 181, 115, 0.2) !important;
+    background: var(--card-bg) !important;
+    backdrop-filter: blur(20px);
+    border: 2px solid var(--border-accent) !important;
     border-radius: var(--radius-xl);
     padding: 3rem;
     width: 100%;
@@ -341,12 +337,13 @@ main {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 80px;
-    height: 80px;
+    width: 300px;
+    height: 250px;
     background: var(--accent-gradient) !important;
     border-radius: 20px;
     margin-bottom: 1.5rem;
     box-shadow: var(--shadow-gold);
+    overflow: hidden;
 }
 
 .logo-container i {
@@ -354,47 +351,66 @@ main {
     color: var(--forest-green-dark) !important;
 }
 
+.logo-container img {
+    width: 400px;
+    height: 300px;
+    object-fit: cover;
+    border-radius: 20px;
+}
+
 .auth-header h1 {
     font-size: 2rem;
     font-weight: 700;
     margin-bottom: 0.5rem;
-    background: var(--accent-gradient);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: var(--text-primary) !important;
 }
 
 .auth-header p {
     font-size: 1rem;
     margin-bottom: 0;
-    color: var(--text-secondary);
+    color: var(--text-secondary) !important;
 }
 
 .auth-form {
     margin-bottom: 1.5rem;
 }
 
-.form-floating > .form-control {
-    background: rgba(229, 181, 115, 0.05) !important;
-    border: 1px solid rgba(229, 181, 115, 0.2) !important;
-    color: var(--text-primary) !important;
-    transition: all 0.3s ease;
+.auth-form .form-floating {
+    margin-bottom: 1rem;
 }
 
-.form-floating > .form-control:focus {
-    background: rgba(229, 181, 115, 0.08) !important;
+.auth-form .form-floating > .form-control {
+    background: var(--bg-tertiary) !important;
+    border: 2px solid var(--border-color) !important;
+    color: var(--text-primary) !important;
+    transition: all 0.3s ease;
+    padding: 1rem 0.75rem;
+    height: calc(3.5rem + 2px);
+}
+
+.auth-form .form-floating > .form-control::placeholder {
+    color: transparent !important;
+}
+
+.auth-form .form-floating > .form-control:focus {
+    background: var(--bg-secondary) !important;
     border-color: var(--golden-beige) !important;
     box-shadow: 0 0 0 0.25rem rgba(229, 181, 115, 0.15) !important;
     color: var(--text-primary) !important;
 }
 
-.form-floating > label {
+.auth-form .form-floating > label {
     color: var(--text-muted) !important;
+    font-weight: 500;
+    padding: 1rem 0.75rem;
+    transition: all 0.3s ease;
 }
 
-.form-floating > .form-control:focus ~ label,
-.form-floating > .form-control:not(:placeholder-shown) ~ label {
+.auth-form .form-floating > .form-control:focus ~ label,
+.auth-form .form-floating > .form-control:not(:placeholder-shown) ~ label {
     color: var(--golden-beige) !important;
+    transform: scale(0.85) translateY(-0.5rem) translateX(0.15rem);
+    opacity: 1;
 }
 
 .form-check-input:checked {
@@ -419,16 +435,17 @@ main {
     left: 0;
     right: 0;
     height: 1px;
-    background: rgba(229, 181, 115, 0.2);
+    background: var(--border-accent);
 }
 
 .auth-divider span {
     position: relative;
     display: inline-block;
     padding: 0 1rem;
-    background: rgba(229, 181, 115, 0.05);
-    color: var(--text-muted);
+    background: var(--card-bg);
+    color: var(--text-muted) !important;
     font-size: 0.9rem;
+    font-weight: 600;
 }
 
 .auth-footer {
@@ -437,22 +454,32 @@ main {
 
 .auth-footer p {
     margin: 0;
-    color: var(--text-secondary);
+    color: var(--text-secondary) !important;
+    font-weight: 500;
 }
 
 .signup-link {
     color: var(--golden-beige) !important;
     text-decoration: none;
-    font-weight: 600;
+    font-weight: 700;
     transition: color 0.3s ease;
 }
 
 .signup-link:hover {
     color: var(--golden-beige-light) !important;
+    text-decoration: underline;
 }
 
 .password-requirements {
     border-radius: var(--radius-md);
+    background: var(--bg-accent);
+    padding: 0.75rem;
+    border-left: 3px solid var(--golden-beige);
+}
+
+.password-requirements small {
+    color: var(--text-primary) !important;
+    font-weight: 500;
 }
 
 /* Auth Decorative Elements */
@@ -464,13 +491,14 @@ main {
     height: 100%;
     pointer-events: none;
     overflow: hidden;
+    z-index: 1;
 }
 
 .decoration-circle {
     position: absolute;
     border-radius: 50%;
-    background: linear-gradient(135deg, rgba(229, 181, 115, 0.2), rgba(45, 69, 56, 0.2));
-    filter: blur(60px);
+    background: linear-gradient(135deg, rgba(229, 181, 115, 0.15), rgba(45, 69, 56, 0.15));
+    filter: blur(80px);
     animation: float 20s infinite ease-in-out;
 }
 
@@ -1013,87 +1041,6 @@ main {
 
 [data-bs-theme="light"] .table tbody tr {
     background-color: rgba(245, 240, 232, 0.5) !important;
-}
-
-[data-bs-theme="light"] .table tbody tr:hover {
-    background: rgba(229, 181, 115, 0.2) !important;
-}
-
-/* ============================================================================
-   13. TABLES
-   ============================================================================ */
-
-.table {
-    color: var(--text-primary) !important;
-    background-color: transparent !important;
-    --bs-table-bg: transparent !important;
-    --bs-table-striped-bg: rgba(229, 181, 115, 0.05) !important;
-    --bs-table-hover-bg: rgba(229, 181, 115, 0.1) !important;
-}
-
-.table thead {
-    background: var(--primary-gradient) !important;
-    color: var(--golden-beige) !important;
-    font-weight: 700;
-    text-transform: uppercase;
-    font-size: 0.875rem;
-    letter-spacing: 0.05em;
-}
-
-.table thead th {
-    border-bottom: 2px solid var(--golden-beige) !important;
-    color: var(--golden-beige) !important;
-    background: var(--primary-gradient) !important;
-    padding: 1rem !important;
-}
-
-.table tbody {
-    background: var(--bg-secondary) !important;
-}
-
-.table tbody tr {
-    transition: all var(--transition-fast);
-    border-bottom: 1px solid var(--border-color) !important;
-    color: var(--text-primary) !important;
-    background-color: var(--bg-secondary) !important;
-}
-
-.table tbody tr:hover {
-    background: var(--subtle-gradient) !important;
-    transform: scale(1.01);
-}
-
-.table tbody td {
-    color: var(--text-primary) !important;
-    padding: 1rem !important;
-}
-
-.table-dark {
-    background-color: var(--bg-secondary) !important;
-    color: var(--text-primary) !important;
-}
-
-.table-striped tbody tr:nth-of-type(odd) {
-    background-color: rgba(229, 181, 115, 0.05) !important;
-}
-
-/* Light mode table adjustments */
-[data-bs-theme="light"] .table thead {
-    background: linear-gradient(135deg, #4d6558 0%, #3d5548 100%) !important;
-    color: #fafaf9 !important;
-}
-
-[data-bs-theme="light"] .table thead th {
-    color: #fafaf9 !important;
-    border-bottom: 2px solid #fafaf9 !important;
-}
-
-[data-bs-theme="light"] .table tbody {
-    background: rgba(255, 255, 255, 0.7) !important;
-}
-
-[data-bs-theme="light"] .table tbody tr {
-    background-color: rgba(255, 255, 255, 0.7) !important;
 }
 
 [data-bs-theme="light"] .table tbody tr:hover {
