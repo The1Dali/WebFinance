@@ -1,23 +1,32 @@
 from cs50 import SQL
 from datetime import datetime, timedelta
-from flask import Flask, flash, redirect, render_template, request, session, send_file, abort
+from flask import Flask, flash, redirect, render_template, request, session, send_file, abort, jsonify
 from flask_session import Session
+from functools import wraps
 from io import StringIO, BytesIO
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 
-from helpers import apg, usd, login_required, allowed_file, check_budget_warning, get_histogram_data, calculate_trends, get_spending_trends, get_category_analysis, get_period_comparison, get_time_analysis, calculate_financial_health, get_recurring_analysis, calculate_next_date, process_recurring_transactions
+from helpers import apg, usd, login_required, allowed_file, check_budget_warning, get_histogram_data, calculate_trends, get_spending_trends, get_category_analysis, get_period_comparison, get_time_analysis, calculate_financial_health, get_recurring_analysis, calculate_next_date, process_recurring_transactions, load_whisper_model
 
 import calendar
 import csv
 import calendar
 import json
 import os
+import tempfile
 
 
 
 UPLOAD_FOLDER = "Database/Receipts"
 MAX_FILE_SIZE = 5 * 1024 * 1024 
+
+WHISPER_MODEL = "base" 
+USE_FASTER_WHISPER = True
+
+conversation_history = {}
+
+whisper_model = None
 
 # Configure application
 app = Flask(__name__)
@@ -450,6 +459,168 @@ def export_csv():
         as_attachment=True,
         download_name=f'transactions_{start_date}_to_{end_date}.csv'
     )
+
+@app.route('/api/speech-to-text', methods=['POST'])
+@login_required
+def speech_to_text():
+    """
+    Convert speech audio to text using Whisper
+    Accepts audio file from browser microphone
+    """
+    try:
+        if whisper_model is None:
+            return jsonify({
+                'error': 'Speech recognition not available',
+                'message': 'Whisper model not loaded. Please restart the server.'
+            }), 503
+        
+        if 'audio' not in request.files:
+            return jsonify({'error': 'No audio file provided'}), 400
+        
+        audio_file = request.files['audio']
+        
+        if audio_file.filename == '':
+            return jsonify({'error': 'Empty filename'}), 400
+        
+        print(f"Received audio file: {audio_file.filename}, Content-Type: {audio_file.content_type}")
+        
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.webm') as temp_audio:
+            audio_file.save(temp_audio.name)
+            temp_path = temp_audio.name
+        
+        print(f"Saved to temporary file: {temp_path}")
+        
+        try:
+            print("Starting transcription...")
+            
+            if USE_FASTER_WHISPER: 
+                segments, info = whisper_model.transcribe(
+                    temp_path,
+                    language="en",  
+                    beam_size=5,
+                    vad_filter=True, 
+                    vad_parameters=dict(
+                        min_silence_duration_ms=500
+                    )
+                )
+                
+                print(f"Detected language: {info.language} (probability: {info.language_probability:.2f})")
+                
+                transcription = " ".join([segment.text for segment in segments]).strip()
+                
+            else: 
+                result = whisper_model.transcribe(temp_path, language="en")
+                transcription = result["text"].strip()
+            
+            os.unlink(temp_path)
+            
+            print(f"Transcription complete: '{transcription}'")
+            
+            if not transcription:
+                return jsonify({
+                    'error': 'No speech detected',
+                    'message': 'Could not detect any speech in the audio. Please try again.'
+                }), 400
+            
+            return jsonify({
+                'transcription': transcription,
+                'success': True
+            })
+            
+        except Exception as e:
+            if os.path.exists(temp_path):
+                os.unlink(temp_path)
+            raise e
+            
+    except Exception as e:
+        print(f"Speech-to-text error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'error': 'Failed to transcribe audio',
+            'message': str(e)
+        }), 500
+
+@app.route('/api/ai-chat', methods=['POST'])
+@login_required
+def ai_chat():
+    """
+    Handle AI chat requests with financial context
+    """
+    try:
+        data = request.get_json()
+        user_message = data.get('message', '').strip()
+        
+        if not user_message:
+            return jsonify({'error': 'Message is required'}), 400
+        
+        user_id = session['user_id']
+        
+        print(f"User {user_id} asked: {user_message}")
+        
+        if user_id not in conversation_history:
+            conversation_history[user_id] = []
+        
+        financial_context = get_user_financial_data(user_id)
+        
+        prompt = create_financial_prompt(user_message, financial_context)
+        
+        print("Sending to Model...")
+        
+        ollama_response = requests.post(
+            OLLAMA_API_URL,
+            json={
+                "model": OLLAMA_MODEL,
+                "prompt": prompt,
+                "stream": False,
+                "options": {
+                    "temperature": 0.7,
+                    "top_p": 0.9,
+                    "num_predict": 200
+                }
+            },
+            timeout=30
+        )
+        
+        if ollama_response.status_code != 200:
+            print(f"Ollama error: {ollama_response.status_code}")
+            return jsonify({
+                'error': 'AI service unavailable',
+                'response': 'Sorry, I\'m having trouble connecting to the AI service. Please try again.'
+            }), 500
+        
+        ai_response = ollama_response.json().get('response', '').strip()
+        
+        print(f"AI Response: {ai_response[:100]}...")
+        
+        conversation_history[user_id].append({
+            'user': user_message,
+            'assistant': ai_response,
+            'timestamp': datetime.now().isoformat()
+        })
+        
+        if len(conversation_history[user_id]) > 10:
+            conversation_history[user_id] = conversation_history[user_id][-10:]
+        
+        return jsonify({
+            'response': ai_response,
+            'timestamp': datetime.now().isoformat()
+        })
+        
+    except requests.Timeout:
+        return jsonify({
+            'error': 'Request timeout',
+            'response': 'The AI took too long to respond. Please try a simpler question.'
+        }), 504
+        
+    except Exception as e:
+        print(f"AI Chat Error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'error': 'Internal server error',
+            'response': 'Sorry, something went wrong. Please try again.'
+        }), 500
 
 @app.route("/budget/get", methods=["GET"])
 @login_required
@@ -1265,3 +1436,7 @@ def edit_transaction(transaction_id):
     
     categories = db.execute("SELECT * FROM categories WHERE type = ?", transaction['type'])
     return render_template("edit-transaction.html", transaction=transaction, categories=categories)
+
+if __name__ == '__main__':
+    load_whisper_model() 
+    app.run(debug=True)

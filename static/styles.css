@@ -1412,13 +1412,6 @@ header .rounded-circle:hover {
     cursor: pointer;
 }
 
-.advisorimg {
-    width: 80px;
-    height: 80px;
-    object-fit: cover;
-    overflow: hidden;
-}
-
 .ai-toggle-btn:hover {
     transform: scale(1.08) rotate(5deg);
     box-shadow: var(--shadow-xl), var(--shadow-glow);
@@ -1682,6 +1675,69 @@ header .rounded-circle:hover {
     background: rgba(255, 255, 255, 0.8) !important;
 }
 
+/* Voice Button Styles */
+.voice-btn {
+    width: 45px;
+    height: 45px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-full);
+    transition: all var(--transition-fast);
+    border: 2px solid var(--golden-beige) !important;
+    background: transparent !important;
+    color: var(--golden-beige) !important;
+}
+
+.voice-btn:hover {
+    background: rgba(229, 181, 115, 0.1) !important;
+    transform: scale(1.05);
+}
+
+.voice-btn.listening {
+    background: var(--accent-gradient) !important;
+    color: var(--forest-green-dark) !important;
+    animation: pulse 1.5s infinite;
+    border-color: var(--golden-beige-light) !important;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(229, 181, 115, 0.7);
+    }
+    50% {
+        box-shadow: 0 0 0 10px rgba(229, 181, 115, 0);
+    }
+}
+
+.voice-status {
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.voice-status small {
+    color: var(--golden-beige) !important;
+    font-weight: 600;
+}
+
+[data-bs-theme="light"] .voice-btn {
+    border-color: var(--forest-green) !important;
+    color: var(--forest-green) !important;
+}
+
+[data-bs-theme="light"] .voice-btn:hover {
+    background: rgba(45, 69, 56, 0.1) !important;
+}
+
+[data-bs-theme="light"] .voice-btn.listening {
+    color: var(--forest-green-dark) !important;
+}
+
 /* Responsive Design */
 @media (max-width: 576px) {
     .ai-chat-window {
@@ -1693,8 +1749,12 @@ header .rounded-circle:hover {
         width: 60px;
         height: 60px;
     }
+    
+    .voice-btn {
+        width: 40px;
+        height: 40px;
+    }
 }
-
 @media (max-height: 700px) {
     .ai-chat-window {
         height: calc(100vh - 2rem);

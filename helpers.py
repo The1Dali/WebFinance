@@ -627,4 +627,38 @@ def process_recurring_transactions():
     
     return len(due_recurring)
 
+def load_whisper_model():
+    """
+    Load Whisper model at startup
+    This runs once when Flask starts
+    """
+    global whisper_model
+    
+    try:
+        print("Loading Whisper model... (this may take 10-30 seconds on first run)")
+        
+        if USE_FASTER_WHISPER:
+            from faster_whisper import WhisperModel
+            
+            whisper_model = WhisperModel(
+                WHISPER_MODEL,
+                device="cpu",
+                compute_type="int8", 
+                num_workers=2 
+            )
+            print(f"Faster-Whisper '{WHISPER_MODEL}' model loaded successfully!")
+        else:
+            import whisper
+            whisper_model = whisper.load_model(WHISPER_MODEL)
+            print(f"Whisper '{WHISPER_MODEL}' model loaded successfully!")
+        
+        return True
+            
+    except ImportError as e:
+        print(f"Whisper not installed. Run: pip install faster-whisper")
+        print(f"Error: {e}")
+        return False
+    except Exception as e:
+        print(f"Failed to load Whisper model: {e}")
+        return False
     
