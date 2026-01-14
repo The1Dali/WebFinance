@@ -1,8 +1,8 @@
 APScheduler==3.10.4
 cs50==9.2.5
-faster_whisper==1.2.1
 Flask==2.3.3
 Flask-Session==0.5.0
 python-dateutil==2.8.2
 requests==2.31.0
+setuptools==80.9.0
 Werkzeug==2.3.7

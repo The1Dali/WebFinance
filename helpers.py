@@ -661,4 +661,301 @@ def load_whisper_model():
     except Exception as e:
         print(f"Failed to load Whisper model: {e}")
         return False
+
+def get_user_financial_data(user_id):
+    """Fetch user's financial data from YOUR database"""
     
+    try:
+        now = datetime.now()
+        current_month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        current_week_start = now - timedelta(days=now.weekday())
+        current_year_start = now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+        
+        active_budget = db.execute("""
+            SELECT amount, period, start_date, end_date
+            FROM budgets
+            WHERE user_id = ? AND is_active = 1
+            ORDER BY created_at DESC
+            LIMIT 1
+        """, user_id)
+        
+        budget_info = None
+        if active_budget:
+            budget_info = {
+                'total': active_budget[0]['amount'],
+                'period': active_budget[0]['period'],
+                'start_date': active_budget[0]['start_date'],
+                'end_date': active_budget[0]['end_date']
+            }
+        
+        category_budgets = db.execute("""
+            SELECT category, limit_amount
+            FROM category_budgets
+            WHERE user_id = ? AND is_active = 1
+        """, user_id)
+        
+        category_budget_dict = {cb['category']: cb['limit_amount'] for cb in category_budgets}
+        
+        monthly_stats = db.execute("""
+            SELECT 
+                type,
+                category,
+                SUM(amount) as total,
+                COUNT(*) as count
+            FROM transactions
+            WHERE user_id = ? AND time >= ?
+            GROUP BY type, category
+        """, user_id, current_month_start.strftime('%Y-%m-%d %H:%M:%S'))
+        
+        monthly_income = sum(s['total'] for s in monthly_stats if s['type'] == 'INCOME')
+        monthly_expenses = sum(s['total'] for s in monthly_stats if s['type'] == 'EXPENSE')
+        
+        income_by_category = {s['category']: s['total'] for s in monthly_stats if s['type'] == 'INCOME'}
+        expenses_by_category = {s['category']: s['total'] for s in monthly_stats if s['type'] == 'EXPENSE'}
+        
+        weekly_stats = db.execute("""
+            SELECT 
+                type,
+                SUM(amount) as total
+            FROM transactions
+            WHERE user_id = ? AND time >= ?
+            GROUP BY type
+        """, user_id, current_week_start.strftime('%Y-%m-%d %H:%M:%S'))
+        
+        weekly_income = next((s['total'] for s in weekly_stats if s['type'] == 'INCOME'), 0)
+        weekly_expenses = next((s['total'] for s in weekly_stats if s['type'] == 'EXPENSE'), 0)
+        
+        yearly_stats = db.execute("""
+            SELECT 
+                type,
+                SUM(amount) as total
+            FROM transactions
+            WHERE user_id = ? AND time >= ?
+            GROUP BY type
+        """, user_id, current_year_start.strftime('%Y-%m-%d %H:%M:%S'))
+        
+        yearly_income = next((s['total'] for s in yearly_stats if s['type'] == 'INCOME'), 0)
+        yearly_expenses = next((s['total'] for s in yearly_stats if s['type'] == 'EXPENSE'), 0)
+        
+        all_transactions = db.execute("""
+            SELECT type, SUM(amount) as total
+            FROM transactions
+            WHERE user_id = ?
+            GROUP BY type
+        """, user_id)
+        
+        total_income = next((t['total'] for t in all_transactions if t['type'] == 'INCOME'), 0)
+        total_expenses = next((t['total'] for t in all_transactions if t['type'] == 'EXPENSE'), 0)
+        total_balance = total_income - total_expenses
+        
+        recent_transactions = db.execute("""
+            SELECT name, amount, type, category, time
+            FROM transactions
+            WHERE user_id = ?
+            ORDER BY time DESC
+            LIMIT 10
+        """, user_id)
+        
+        recurring = db.execute("""
+            SELECT name, amount, type, category, frequency, next_occurrence
+            FROM recurring_transactions
+            WHERE user_id = ? AND is_active = 1
+            ORDER BY next_occurrence ASC
+        """, user_id)
+        
+        three_months_ago = (now - timedelta(days=90)).strftime('%Y-%m-%d %H:%M:%S')
+        monthly_trend = db.execute("""
+            SELECT 
+                strftime('%Y-%m', time) as month,
+                type,
+                SUM(amount) as total
+            FROM transactions
+            WHERE user_id = ? AND time >= ?
+            GROUP BY month, type
+            ORDER BY month DESC
+        """, user_id, three_months_ago)
+        
+        top_expenses = db.execute("""
+            SELECT 
+                category,
+                SUM(amount) as total,
+                COUNT(*) as count
+            FROM transactions
+            WHERE user_id = ? AND type = 'EXPENSE' AND time >= ?
+            GROUP BY category
+            ORDER BY total DESC
+            LIMIT 5
+        """, user_id, current_month_start.strftime('%Y-%m-%d %H:%M:%S'))
+        
+        budget_spent = monthly_expenses
+        budget_status = None
+        if budget_info and budget_info['period'] == 'MONTHLY':
+            budget_remaining = budget_info['total'] - budget_spent
+            budget_percentage = (budget_spent / budget_info['total'] * 100) if budget_info['total'] > 0 else 0
+            budget_status = {
+                'spent': budget_spent,
+                'remaining': budget_remaining,
+                'percentage': round(budget_percentage, 1),
+                'is_over': budget_spent > budget_info['total']
+            }
+        
+        category_budget_status = {}
+        for category, limit in category_budget_dict.items():
+            spent = expenses_by_category.get(category, 0)
+            category_budget_status[category] = {
+                'limit': limit,
+                'spent': spent,
+                'remaining': limit - spent,
+                'percentage': round((spent / limit * 100) if limit > 0 else 0, 1),
+                'is_over': spent > limit
+            }
+        
+        return {
+            'balance': {
+                'total': total_balance,
+                'total_income': total_income,
+                'total_expenses': total_expenses
+            },
+            'monthly': {
+                'income': monthly_income,
+                'expenses': monthly_expenses,
+                'net': monthly_income - monthly_expenses,
+                'income_by_category': income_by_category,
+                'expenses_by_category': expenses_by_category
+            },
+            'weekly': {
+                'income': weekly_income,
+                'expenses': weekly_expenses,
+                'net': weekly_income - weekly_expenses
+            },
+            'yearly': {
+                'income': yearly_income,
+                'expenses': yearly_expenses,
+                'net': yearly_income - yearly_expenses
+            },
+            'budget': budget_info,
+            'budget_status': budget_status,
+            'category_budgets': category_budget_dict,
+            'category_budget_status': category_budget_status,
+            'recent_transactions': [
+                {
+                    'name': t['name'],
+                    'amount': t['amount'],
+                    'type': t['type'],
+                    'category': t['category'],
+                    'date': t['time']
+                } for t in recent_transactions
+            ],
+            'recurring_transactions': [
+                {
+                    'name': r['name'],
+                    'amount': r['amount'],
+                    'type': r['type'],
+                    'category': r['category'],
+                    'frequency': r['frequency'],
+                    'next_date': r['next_occurrence']
+                } for r in recurring
+            ],
+            'top_expense_categories': [
+                {
+                    'category': e['category'],
+                    'total': e['total'],
+                    'count': e['count']
+                } for e in top_expenses
+            ],
+            'trends': {
+                'monthly': monthly_trend
+            },
+            'timestamp': now.isoformat()
+        }
+        
+    except Exception as e:
+        print(f"Error gathering financial data: {e}")
+        import traceback
+        traceback.print_exc()
+        return {}
+
+def create_financial_prompt(user_message, financial_context):
+    """ Create a detailed prompt for the AI model with financial context """
+    
+    budget_text = "No active budget set."
+    if financial_context.get('budget_status'):
+        bs = financial_context['budget_status']
+        budget_text = f"""Active Monthly Budget: ${financial_context['budget']['total']:.2f}
+    - Spent: ${bs['spent']:.2f} ({bs['percentage']}%)
+    - Remaining: ${bs['remaining']:.2f}
+    - Status: {'OVER BUDGET' if bs['is_over'] else 'Within budget'}"""
+    
+    category_budget_text = ""
+    if financial_context.get('category_budget_status'):
+        category_budget_text = "Category Budget Status:\n"
+        for cat, status in financial_context['category_budget_status'].items():
+            category_budget_text += f"- {cat}: ${status['spent']:.2f} / ${status['limit']:.2f} ({status['percentage']}%) "
+            category_budget_text += f"{'⚠️ OVER' if status['is_over'] else '✓'}\n"
+    
+    top_expenses_text = ""
+    if financial_context.get('top_expense_categories'):
+        top_expenses_text = "Top Expense Categories This Month:\n"
+        for exp in financial_context['top_expense_categories']:
+            top_expenses_text += f"- {exp['category']}: ${exp['total']:.2f} ({exp['count']} transactions)\n"
+    
+    recent_trans_text = ""
+    if financial_context.get('recent_transactions'):
+        recent_trans_text = "Recent Transactions:\n"
+        for trans in financial_context['recent_transactions'][:5]:
+            sign = "+" if trans['type'] == 'INCOME' else "-"
+            recent_trans_text += f"- {trans['name']}: {sign}${trans['amount']:.2f} ({trans['category']}) on {trans['date'][:10]}\n"
+    
+    recurring_text = ""
+    if financial_context.get('recurring_transactions'):
+        recurring_text = "Upcoming Recurring Transactions:\n"
+        for rec in financial_context['recurring_transactions'][:3]:
+            recurring_text += f"- {rec['name']}: ${rec['amount']:.2f} ({rec['frequency']}) - Next: {rec['next_date']}\n"
+    
+    prompt = f"""You are a knowledgeable and friendly personal financial advisor. You have access to the user's complete financial data and should provide helpful, actionable advice.
+
+    USER QUESTION: {user_message}
+
+    CURRENT FINANCIAL SNAPSHOT:
+    ==========================
+
+    Overall Balance: ${financial_context['balance']['total']:.2f}
+    - Total Income: ${financial_context['balance']['total_income']:.2f}
+    - Total Expenses: ${financial_context['balance']['total_expenses']:.2f}
+
+    This Month:
+    - Income: ${financial_context['monthly']['income']:.2f}
+    - Expenses: ${financial_context['monthly']['expenses']:.2f}
+    - Net: ${financial_context['monthly']['net']:.2f}
+
+    This Week:
+    - Income: ${financial_context['weekly']['income']:.2f}
+    - Expenses: ${financial_context['weekly']['expenses']:.2f}
+    - Net: ${financial_context['weekly']['net']:.2f}
+
+    {budget_text}
+
+    {category_budget_text}
+
+    {top_expenses_text}
+
+    {recent_trans_text}
+
+    {recurring_text}
+
+    INSTRUCTIONS:
+    =============
+    1. Answer the user's question directly and concisely
+    2. Use the financial data provided to give specific, personalized advice
+    3. If they ask "can I afford X?", check their current balance, monthly net income, and budget status
+    4. If they're over budget or close to limits, provide gentle warnings and suggestions
+    5. Be encouraging and supportive, not judgmental
+    6. Provide specific numbers from their data when relevant
+    7. Keep responses under 200 words unless more detail is needed
+    8. If asked about trends, reference the data provided
+    9. For affordability questions, consider both current balance AND monthly cash flow
+    10. Suggest practical next steps when appropriate
+
+    RESPONSE:"""
+
+    return prompt

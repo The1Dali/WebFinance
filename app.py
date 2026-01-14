@@ -1,5 +1,6 @@
 from cs50 import SQL
 from datetime import datetime, timedelta
+from faster_whisper import WhisperModel
 from flask import Flask, flash, redirect, render_template, request, session, send_file, abort, jsonify
 from flask_session import Session
 from functools import wraps
@@ -14,6 +15,7 @@ import csv
 import calendar
 import json
 import os
+import tempfile
 import tempfile
 
 
