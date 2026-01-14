@@ -469,16 +469,17 @@ def export_csv():
 @app.route('/api/speech-to-text', methods=['POST'])
 @login_required
 def speech_to_text():
-    """
-    Convert speech audio to text using Whisper
-    Accepts audio file from browser microphone
-    """
+    """Convert speech audio to text using Whisper"""
     try:
-        if whisper_model is None:
+        from helpers import whisper_model as loaded_model
+        
+        if loaded_model is None:
+            print("Whisper model is None!")
             return jsonify({
                 'error': 'Speech recognition not available',
                 'message': 'Whisper model not loaded. Please restart the server.'
             }), 503
+
         
         if 'audio' not in request.files:
             return jsonify({'error': 'No audio file provided'}), 400
@@ -488,44 +489,35 @@ def speech_to_text():
         if audio_file.filename == '':
             return jsonify({'error': 'Empty filename'}), 400
         
-        print(f"Received audio file: {audio_file.filename}, Content-Type: {audio_file.content_type}")
+        print(f"Received audio file: {audio_file.filename}")
         
         with tempfile.NamedTemporaryFile(delete=False, suffix='.webm') as temp_audio:
             audio_file.save(temp_audio.name)
             temp_path = temp_audio.name
         
-        print(f"Saved to temporary file: {temp_path}")
+        print(f"Saved to: {temp_path}")
         
         try:
             print("Starting transcription...")
             
-            if USE_FASTER_WHISPER: 
-                segments, info = whisper_model.transcribe(
-                    temp_path,
-                    language="en",  
-                    beam_size=5,
-                    vad_filter=True, 
-                    vad_parameters=dict(
-                        min_silence_duration_ms=500
-                    )
-                )
-                
-                print(f"Detected language: {info.language} (probability: {info.language_probability:.2f})")
-                
-                transcription = " ".join([segment.text for segment in segments]).strip()
-                
-            else: 
-                result = whisper_model.transcribe(temp_path, language="en")
-                transcription = result["text"].strip()
+            segments, info = loaded_model.transcribe(  # Use loaded_model instead
+                temp_path,
+                language="en",
+                beam_size=5,
+                vad_filter=True,
+                vad_parameters=dict(min_silence_duration_ms=500)
+            )
+            
+            transcription = " ".join([segment.text for segment in segments]).strip()
             
             os.unlink(temp_path)
             
-            print(f"Transcription complete: '{transcription}'")
+            print(f"Transcription: '{transcription}'")
             
             if not transcription:
                 return jsonify({
                     'error': 'No speech detected',
-                    'message': 'Could not detect any speech in the audio. Please try again.'
+                    'message': 'Could not detect any speech. Please try again.'
                 }), 400
             
             return jsonify({
@@ -1449,6 +1441,28 @@ if __name__ == '__main__':
     print("="*60)
     
     whisper_model = load_whisper_model()
+    
+    if whisper_model:
+        print("Voice recognition ready!")
+    else:
+        print("Voice recognition disabled")
+    
+    print("\nWarming up AI model...")
+    try:
+        warmup = requests.post(
+            OLLAMA_API_URL,
+            json={
+                "model": OLLAMA_MODEL,
+                "prompt": "Hello",
+                "stream": False,
+                "options": {"num_predict": 10}
+            },
+            timeout=60
+        )
+        if warmup.status_code == 200:
+            print("AI model ready!")
+    except:
+        print("Could not warm up model")
     
     print("="*60)
     print("Starting Flask...")

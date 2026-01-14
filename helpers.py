@@ -635,12 +635,13 @@ def process_recurring_transactions():
 
 def load_whisper_model():
     """Load Whisper model at startup"""
-    
+    global whisper_model
+
     try:
         print("Loading Whisper model...")
         from faster_whisper import WhisperModel
         
-        model = WhisperModel(
+        whisper_model = WhisperModel(
             WHISPER_MODEL,
             device="cpu",
             compute_type="int8", 
@@ -648,7 +649,7 @@ def load_whisper_model():
         )
         print(f"Whisper '{WHISPER_MODEL}' loaded successfully!")
         
-        return model  # ← Return the model
+        return whisper_model
             
     except Exception as e:
         print(f"Failed to load Whisper: {e}")
@@ -745,7 +746,7 @@ def get_user_financial_data(user_id):
             FROM transactions
             WHERE user_id = ?
             ORDER BY time DESC
-            LIMIT 10
+            LIMIT 50
         """, user_id)
         
         recurring = db.execute("""
@@ -776,7 +777,7 @@ def get_user_financial_data(user_id):
             WHERE user_id = ? AND type = 'EXPENSE' AND time >= ?
             GROUP BY category
             ORDER BY total DESC
-            LIMIT 5
+            LIMIT 10
         """, user_id, current_month_start.strftime('%Y-%m-%d %H:%M:%S'))
         
         budget_spent = monthly_expenses
@@ -870,11 +871,10 @@ def get_user_financial_data(user_id):
 def create_financial_prompt(user_message, financial_context):
     """Create a concise prompt for the AI model"""
     
-    # Shorter, more focused context
     balance = financial_context.get('balance', {})
     monthly = financial_context.get('monthly', {})
     budget_status = financial_context.get('budget_status')
-    recent = financial_context.get('recent_transactions', [])[:3]  # Only 3 transactions
+    recent = financial_context.get('recent_transactions', [])[:3] 
     
     context_summary = f"""FINANCIAL SNAPSHOT:
 Balance: ${balance.get('total', 0):.2f}
@@ -886,7 +886,7 @@ Budget: ${budget_status['spent']:.2f} / ${financial_context['budget']['total']:.
     
     if recent:
         context_summary += "\nRecent: "
-        for t in recent[:3]:
+        for t in recent[:50]:
             sign = "+" if t['type'] == 'INCOME' else "-"
             context_summary += f"{t['name']} {sign}${t['amount']:.2f}, "
     

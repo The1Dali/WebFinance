@@ -1430,7 +1430,7 @@ header .rounded-circle:hover {
 /* Chat Window */
 .ai-chat-window {
     width: 450px;
-    height: 600px;
+    height: 650px;  
     border-radius: var(--radius-xl);
     background: var(--background-gradient) !important;
     border: 2px solid var(--border-accent) !important;
@@ -1485,16 +1485,14 @@ header .rounded-circle:hover {
 
 /* Chat Messages Area */
 .ai-chat-messages {
-    height: 380px; /* ← Reduce from 440px to make room */
+    height: 380px;  
     overflow-y: auto;
     background: rgba(31, 48, 39, 0.4);
     backdrop-filter: blur(10px);
     scrollbar-width: thin;
     scrollbar-color: var(--golden-beige) transparent;
     position: relative;
-    padding-bottom: 1rem; /* ← ADD THIS */
 }
-
 .ai-chat-messages::before {
     content: '';
     position: absolute;
@@ -1621,10 +1619,9 @@ header .rounded-circle:hover {
     background: var(--card-bg) !important;
     border-top: 2px solid var(--border-accent) !important;
     backdrop-filter: blur(10px);
-    position: relative; /* ← ADD THIS */
-    z-index: 10; /* ← ADD THIS */
+    padding: 1rem;  
+    min-height: 120px;  
 }
-
 .ai-chat-input .form-control {
     background: var(--bg-secondary) !important;
     border: 2px solid var(--border-color) !important;
@@ -1716,18 +1713,20 @@ header .rounded-circle:hover {
 
 .voice-status {
     animation: fadeIn 0.3s ease;
-    margin-top: 0.5rem;
-    min-height: 24px; /* Ensure space for status */
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-5px); }
-    to { opacity: 1; transform: translateY(0); }
+    margin-top: 0.75rem;  /* ← INCREASED */
+    min-height: 30px;  /* ← INCREASED */
+    display: block;  /* ← ADD THIS */
 }
 
 .voice-status small {
     color: var(--golden-beige) !important;
     font-weight: 600;
+    display: block;  /* ← ADD THIS */
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 [data-bs-theme="light"] .voice-btn {
