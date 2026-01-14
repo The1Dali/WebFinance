@@ -1485,13 +1485,14 @@ header .rounded-circle:hover {
 
 /* Chat Messages Area */
 .ai-chat-messages {
-    height: 440px;
+    height: 380px; /* ← Reduce from 440px to make room */
     overflow-y: auto;
     background: rgba(31, 48, 39, 0.4);
     backdrop-filter: blur(10px);
     scrollbar-width: thin;
     scrollbar-color: var(--golden-beige) transparent;
     position: relative;
+    padding-bottom: 1rem; /* ← ADD THIS */
 }
 
 .ai-chat-messages::before {
@@ -1620,6 +1621,8 @@ header .rounded-circle:hover {
     background: var(--card-bg) !important;
     border-top: 2px solid var(--border-accent) !important;
     backdrop-filter: blur(10px);
+    position: relative; /* ← ADD THIS */
+    z-index: 10; /* ← ADD THIS */
 }
 
 .ai-chat-input .form-control {
@@ -1713,6 +1716,8 @@ header .rounded-circle:hover {
 
 .voice-status {
     animation: fadeIn 0.3s ease;
+    margin-top: 0.5rem;
+    min-height: 24px; /* Ensure space for status */
 }
 
 @keyframes fadeIn {
@@ -1763,4 +1768,9 @@ header .rounded-circle:hover {
     .ai-chat-messages {
         height: calc(100vh - 220px);
     }
+}
+
+.voice-status small {
+    color: var(--golden-beige) !important;
+    font-weight: 600;
 }

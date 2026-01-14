@@ -1,12 +1,18 @@
 from datetime import datetime, timedelta
-
 from cs50 import SQL
+from faster_whisper import WhisperModel
 from flask import redirect, render_template, session
 from functools import wraps
+
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'pdf'}
 
 db = SQL("sqlite:///Database/finance.db")
+
+WHISPER_MODEL = "base" 
+USE_FASTER_WHISPER = True
+global whisper_model
+whisper_model = None
 
 
 def apg(message, code=400):
@@ -628,39 +634,25 @@ def process_recurring_transactions():
     return len(due_recurring)
 
 def load_whisper_model():
-    """
-    Load Whisper model at startup
-    This runs once when Flask starts
-    """
-    global whisper_model
+    """Load Whisper model at startup"""
     
     try:
-        print("Loading Whisper model... (this may take 10-30 seconds on first run)")
+        print("Loading Whisper model...")
+        from faster_whisper import WhisperModel
         
-        if USE_FASTER_WHISPER:
-            from faster_whisper import WhisperModel
-            
-            whisper_model = WhisperModel(
-                WHISPER_MODEL,
-                device="cpu",
-                compute_type="int8", 
-                num_workers=2 
-            )
-            print(f"Faster-Whisper '{WHISPER_MODEL}' model loaded successfully!")
-        else:
-            import whisper
-            whisper_model = whisper.load_model(WHISPER_MODEL)
-            print(f"Whisper '{WHISPER_MODEL}' model loaded successfully!")
+        model = WhisperModel(
+            WHISPER_MODEL,
+            device="cpu",
+            compute_type="int8", 
+            num_workers=2 
+        )
+        print(f"Whisper '{WHISPER_MODEL}' loaded successfully!")
         
-        return True
+        return model  # ← Return the model
             
-    except ImportError as e:
-        print(f"Whisper not installed. Run: pip install faster-whisper")
-        print(f"Error: {e}")
-        return False
     except Exception as e:
-        print(f"Failed to load Whisper model: {e}")
-        return False
+        print(f"Failed to load Whisper: {e}")
+        return None
 
 def get_user_financial_data(user_id):
     """Fetch user's financial data from YOUR database"""
@@ -876,86 +868,34 @@ def get_user_financial_data(user_id):
         return {}
 
 def create_financial_prompt(user_message, financial_context):
-    """ Create a detailed prompt for the AI model with financial context """
+    """Create a concise prompt for the AI model"""
     
-    budget_text = "No active budget set."
-    if financial_context.get('budget_status'):
-        bs = financial_context['budget_status']
-        budget_text = f"""Active Monthly Budget: ${financial_context['budget']['total']:.2f}
-    - Spent: ${bs['spent']:.2f} ({bs['percentage']}%)
-    - Remaining: ${bs['remaining']:.2f}
-    - Status: {'OVER BUDGET' if bs['is_over'] else 'Within budget'}"""
+    # Shorter, more focused context
+    balance = financial_context.get('balance', {})
+    monthly = financial_context.get('monthly', {})
+    budget_status = financial_context.get('budget_status')
+    recent = financial_context.get('recent_transactions', [])[:3]  # Only 3 transactions
     
-    category_budget_text = ""
-    if financial_context.get('category_budget_status'):
-        category_budget_text = "Category Budget Status:\n"
-        for cat, status in financial_context['category_budget_status'].items():
-            category_budget_text += f"- {cat}: ${status['spent']:.2f} / ${status['limit']:.2f} ({status['percentage']}%) "
-            category_budget_text += f"{'⚠️ OVER' if status['is_over'] else '✓'}\n"
+    context_summary = f"""FINANCIAL SNAPSHOT:
+Balance: ${balance.get('total', 0):.2f}
+This Month - Income: ${monthly.get('income', 0):.2f}, Expenses: ${monthly.get('expenses', 0):.2f}"""
     
-    top_expenses_text = ""
-    if financial_context.get('top_expense_categories'):
-        top_expenses_text = "Top Expense Categories This Month:\n"
-        for exp in financial_context['top_expense_categories']:
-            top_expenses_text += f"- {exp['category']}: ${exp['total']:.2f} ({exp['count']} transactions)\n"
+    if budget_status:
+        context_summary += f"""
+Budget: ${budget_status['spent']:.2f} / ${financial_context['budget']['total']:.2f} ({budget_status['percentage']}%)"""
     
-    recent_trans_text = ""
-    if financial_context.get('recent_transactions'):
-        recent_trans_text = "Recent Transactions:\n"
-        for trans in financial_context['recent_transactions'][:5]:
-            sign = "+" if trans['type'] == 'INCOME' else "-"
-            recent_trans_text += f"- {trans['name']}: {sign}${trans['amount']:.2f} ({trans['category']}) on {trans['date'][:10]}\n"
+    if recent:
+        context_summary += "\nRecent: "
+        for t in recent[:3]:
+            sign = "+" if t['type'] == 'INCOME' else "-"
+            context_summary += f"{t['name']} {sign}${t['amount']:.2f}, "
     
-    recurring_text = ""
-    if financial_context.get('recurring_transactions'):
-        recurring_text = "Upcoming Recurring Transactions:\n"
-        for rec in financial_context['recurring_transactions'][:3]:
-            recurring_text += f"- {rec['name']}: ${rec['amount']:.2f} ({rec['frequency']}) - Next: {rec['next_date']}\n"
+    prompt = f"""You are a helpful financial advisor. Be concise (under 100 words).
+
+{context_summary}
+
+User: {user_message}
+
+Response:"""
     
-    prompt = f"""You are a knowledgeable and friendly personal financial advisor. You have access to the user's complete financial data and should provide helpful, actionable advice.
-
-    USER QUESTION: {user_message}
-
-    CURRENT FINANCIAL SNAPSHOT:
-    ==========================
-
-    Overall Balance: ${financial_context['balance']['total']:.2f}
-    - Total Income: ${financial_context['balance']['total_income']:.2f}
-    - Total Expenses: ${financial_context['balance']['total_expenses']:.2f}
-
-    This Month:
-    - Income: ${financial_context['monthly']['income']:.2f}
-    - Expenses: ${financial_context['monthly']['expenses']:.2f}
-    - Net: ${financial_context['monthly']['net']:.2f}
-
-    This Week:
-    - Income: ${financial_context['weekly']['income']:.2f}
-    - Expenses: ${financial_context['weekly']['expenses']:.2f}
-    - Net: ${financial_context['weekly']['net']:.2f}
-
-    {budget_text}
-
-    {category_budget_text}
-
-    {top_expenses_text}
-
-    {recent_trans_text}
-
-    {recurring_text}
-
-    INSTRUCTIONS:
-    =============
-    1. Answer the user's question directly and concisely
-    2. Use the financial data provided to give specific, personalized advice
-    3. If they ask "can I afford X?", check their current balance, monthly net income, and budget status
-    4. If they're over budget or close to limits, provide gentle warnings and suggestions
-    5. Be encouraging and supportive, not judgmental
-    6. Provide specific numbers from their data when relevant
-    7. Keep responses under 200 words unless more detail is needed
-    8. If asked about trends, reference the data provided
-    9. For affordability questions, consider both current balance AND monthly cash flow
-    10. Suggest practical next steps when appropriate
-
-    RESPONSE:"""
-
     return prompt

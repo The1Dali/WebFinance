@@ -8,13 +8,14 @@ from io import StringIO, BytesIO
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 
-from helpers import apg, usd, login_required, allowed_file, check_budget_warning, get_histogram_data, calculate_trends, get_spending_trends, get_category_analysis, get_period_comparison, get_time_analysis, calculate_financial_health, get_recurring_analysis, calculate_next_date, process_recurring_transactions, load_whisper_model
+from helpers import apg, usd, login_required, allowed_file, check_budget_warning, get_histogram_data, calculate_trends, get_spending_trends, get_category_analysis, get_period_comparison, get_time_analysis, calculate_financial_health, get_recurring_analysis, calculate_next_date, process_recurring_transactions, load_whisper_model, get_user_financial_data, create_financial_prompt
 
 import calendar
 import csv
 import calendar
 import json
 import os
+import requests
 import tempfile
 import tempfile
 
@@ -27,6 +28,9 @@ WHISPER_MODEL = "base"
 USE_FASTER_WHISPER = True
 
 conversation_history = {}
+
+OLLAMA_API_URL = "http://localhost:11434/api/generate"
+OLLAMA_MODEL = "qwen2.5:3b"
 
 whisper_model = None
 
@@ -1440,5 +1444,14 @@ def edit_transaction(transaction_id):
     return render_template("edit-transaction.html", transaction=transaction, categories=categories)
 
 if __name__ == '__main__':
-    load_whisper_model() 
-    app.run(debug=True)
+    print("="*60)
+    print("Financial Tracker Starting...")
+    print("="*60)
+    
+    whisper_model = load_whisper_model()
+    
+    print("="*60)
+    print("Starting Flask...")
+    print("="*60)
+    
+    app.run(debug=True, host='0.0.0.0', port=5000)

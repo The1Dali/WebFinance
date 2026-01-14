@@ -1,96 +1,185 @@
-// Voice Recognition Setup
-let recognition = null;
-let isListening = false;
+// ============================================================================
+// VOICE RECORDING (MediaRecorder - works in ALL browsers including Firefox)
+// ============================================================================
 
-// Initialize Speech Recognition (Web Speech API)
-function initVoiceRecognition() {
-    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        recognition = new SpeechRecognition();
-        
-        recognition.continuous = false;
-        recognition.interimResults = false;
-        recognition.lang = 'en-US';
-        
-        recognition.onstart = function() {
-            isListening = true;
-            document.getElementById('voiceButton').classList.add('listening');
-            document.getElementById('voiceIcon').classList.remove('bi-mic-fill');
-            document.getElementById('voiceIcon').classList.add('bi-mic-mute-fill');
-            document.getElementById('voiceStatus').style.display = 'block';
-            document.getElementById('voiceStatusText').textContent = 'Listening...';
-        };
-        
-        recognition.onresult = function(event) {
-            const transcript = event.results[0][0].transcript;
-            document.getElementById('aiMessageInput').value = transcript;
-            document.getElementById('voiceStatusText').textContent = 'Got it! Processing...';
-            
-            // Auto-submit after getting voice input
-            setTimeout(() => {
-                document.getElementById('aiChatForm').dispatchEvent(new Event('submit'));
-            }, 500);
-        };
-        
-        recognition.onerror = function(event) {
-            console.error('Speech recognition error:', event.error);
-            let errorMsg = 'Error occurred';
-            
-            switch(event.error) {
-                case 'no-speech':
-                    errorMsg = 'No speech detected. Try again.';
-                    break;
-                case 'audio-capture':
-                    errorMsg = 'No microphone found.';
-                    break;
-                case 'not-allowed':
-                    errorMsg = 'Microphone access denied.';
-                    break;
-                default:
-                    errorMsg = 'Voice recognition error.';
+let mediaRecorder = null;
+let audioChunks = [];
+let isRecording = false;
+let stream = null;
+
+// Initialize MediaRecorder for cross-browser voice support
+async function initVoiceRecording() {
+    try {
+        // Request microphone access
+        stream = await navigator.mediaDevices.getUserMedia({ 
+            audio: {
+                echoCancellation: true,
+                noiseSuppression: true,
+                autoGainControl: true
             }
-            
-            document.getElementById('voiceStatusText').textContent = errorMsg;
-            setTimeout(() => {
-                stopListening();
-            }, 2000);
+        });
+        
+        // Determine best audio format for browser
+        let mimeType = 'audio/webm;codecs=opus';
+        
+        if (!MediaRecorder.isTypeSupported(mimeType)) {
+            mimeType = 'audio/webm';
+            if (!MediaRecorder.isTypeSupported(mimeType)) {
+                mimeType = 'audio/ogg;codecs=opus';
+                if (!MediaRecorder.isTypeSupported(mimeType)) {
+                    mimeType = 'audio/mp4';
+                }
+            }
+        }
+        
+        console.log(`Using audio format: ${mimeType}`);
+        
+        // Create MediaRecorder
+        mediaRecorder = new MediaRecorder(stream, {
+            mimeType: mimeType,
+            audioBitsPerSecond: 128000
+        });
+        
+        mediaRecorder.ondataavailable = (event) => {
+            if (event.data.size > 0) {
+                audioChunks.push(event.data);
+            }
         };
         
-        recognition.onend = function() {
-            stopListening();
+        mediaRecorder.onstop = async () => {
+            const audioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType });
+            audioChunks = [];
+            
+            // Send audio to backend for transcription
+            await transcribeAudio(audioBlob);
         };
-    } else {
-        console.warn('Speech recognition not supported in this browser');
-        document.getElementById('voiceButton').style.display = 'none';
+        
+        mediaRecorder.onerror = (event) => {
+            console.error('MediaRecorder error:', event.error);
+            alert('Recording error: ' + event.error);
+        };
+        
+        return true;
+    } catch (error) {
+        console.error('Microphone access error:', error);
+        
+        if (error.name === 'NotAllowedError') {
+            alert('Microphone access denied. Please allow microphone access in your browser settings.');
+        } else if (error.name === 'NotFoundError') {
+            alert('No microphone found. Please connect a microphone.');
+        } else {
+            alert('Error accessing microphone: ' + error.message);
+        }
+        
+        return false;
     }
 }
 
-function toggleVoiceInput() {
-    if (!recognition) {
-        initVoiceRecognition();
-    }
+// Toggle voice input (start/stop recording)
+async function toggleVoiceInput() {
+    const voiceButton = document.getElementById('voiceButton');
+    const voiceIcon = document.getElementById('voiceIcon');
+    const voiceStatus = document.getElementById('voiceStatus');
+    const voiceStatusText = document.getElementById('voiceStatusText');
     
-    if (isListening) {
-        recognition.stop();
+    if (!isRecording) {
+        // Start recording
+        if (!mediaRecorder) {
+            const initialized = await initVoiceRecording();
+            if (!initialized) return;
+        }
+        
+        try {
+            audioChunks = [];
+            mediaRecorder.start();
+            isRecording = true;
+            
+            voiceButton.classList.add('listening');
+            voiceIcon.classList.remove('bi-mic-fill');
+            voiceIcon.classList.add('bi-mic-mute-fill');
+            voiceStatus.style.display = 'block';
+            voiceStatusText.textContent = 'Recording... Click again to stop';
+            
+            console.log('Recording started');
+        } catch (error) {
+            console.error('Start recording error:', error);
+            alert('Failed to start recording: ' + error.message);
+        }
+        
     } else {
-        recognition.start();
+        // Stop recording
+        try {
+            mediaRecorder.stop();
+            isRecording = false;
+            
+            voiceButton.classList.remove('listening');
+            voiceIcon.classList.remove('bi-mic-mute-fill');
+            voiceIcon.classList.add('bi-mic-fill');
+            voiceStatusText.textContent = 'Processing audio...';
+            
+            console.log('Recording stopped');
+        } catch (error) {
+            console.error('Stop recording error:', error);
+            voiceStatus.style.display = 'none';
+        }
     }
 }
 
-function stopListening() {
-    isListening = false;
-    document.getElementById('voiceButton').classList.remove('listening');
-    document.getElementById('voiceIcon').classList.remove('bi-mic-mute-fill');
-    document.getElementById('voiceIcon').classList.add('bi-mic-fill');
-    setTimeout(() => {
-        document.getElementById('voiceStatus').style.display = 'none';
-    }, 2000);
+// Send audio to backend for transcription
+async function transcribeAudio(audioBlob) {
+    const voiceStatusText = document.getElementById('voiceStatusText');
+    const voiceStatus = document.getElementById('voiceStatus');
+    
+    try {
+        const formData = new FormData();
+        formData.append('audio', audioBlob, 'recording.webm');
+        
+        voiceStatusText.textContent = 'Transcribing...';
+        
+        console.log('Sending audio to server...', audioBlob.size, 'bytes');
+        
+        const response = await fetch('/api/speech-to-text', {
+            method: 'POST',
+            body: formData
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Transcription failed');
+        }
+        
+        const data = await response.json();
+        
+        if (data.success && data.transcription) {
+            console.log('Transcription:', data.transcription);
+            
+            // Put transcription in input field
+            document.getElementById('aiMessageInput').value = data.transcription;
+            voiceStatusText.textContent = 'Got it! Sending...';
+            
+            // IMPORTANT: Call sendAIMessage directly, don't dispatch event
+            setTimeout(() => {
+                voiceStatus.style.display = 'none';
+                // Create a fake event object
+                const fakeEvent = { preventDefault: () => {} };
+                sendAIMessage(fakeEvent);  // ← CHANGED: Call function directly
+            }, 500);
+        } else {
+            throw new Error('No transcription received');
+        }
+        
+    } catch (error) {
+        console.error('Transcription error:', error);
+        voiceStatusText.textContent = 'Failed to transcribe: ' + error.message;
+        setTimeout(() => {
+            voiceStatus.style.display = 'none';
+        }, 3000);
+    }
 }
 
-// Initialize when page loads
-document.addEventListener('DOMContentLoaded', function() {
-    initVoiceRecognition();
-});
+// ============================================================================
+// CHAT FUNCTIONS
+// ============================================================================
 
 function toggleAIChat() {
     const chatWindow = document.getElementById('aiChatWindow');
@@ -99,31 +188,37 @@ function toggleAIChat() {
     if (chatWindow.style.display === 'none' || !chatWindow.style.display) {
         chatWindow.style.display = 'block';
         toggleBtn.style.display = 'none';
-        // Focus on input after animation
         setTimeout(() => {
             document.getElementById('aiMessageInput').focus();
         }, 100);
     } else {
         chatWindow.style.display = 'none';
         toggleBtn.style.display = 'flex';
-        // Stop listening if voice is active
-        if (isListening && recognition) {
-            recognition.stop();
+        
+        // Stop recording if active
+        if (isRecording && mediaRecorder) {
+            mediaRecorder.stop();
+            isRecording = false;
+            document.getElementById('voiceButton').classList.remove('listening');
+            document.getElementById('voiceIcon').classList.remove('bi-mic-mute-fill');
+            document.getElementById('voiceIcon').classList.add('bi-mic-fill');
+            document.getElementById('voiceStatus').style.display = 'none';
         }
     }
 }
 
 function sendAIMessage(event) {
-    event.preventDefault();
+    event.preventDefault(); // ← Make sure this is here!
     
     const input = document.getElementById('aiMessageInput');
     const message = input.value.trim();
     
     if (!message) return;
     
-    // Stop voice recognition if active
-    if (isListening && recognition) {
-        recognition.stop();
+    // Stop recording if active
+    if (isRecording && mediaRecorder) {
+        mediaRecorder.stop();
+        isRecording = false;
     }
     
     // Disable input while processing
@@ -148,7 +243,12 @@ function sendAIMessage(event) {
         },
         body: JSON.stringify({ message: message })
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Server error: ' + response.status);
+        }
+        return response.json();
+    })
     .then(data => {
         removeTypingIndicator();
         addMessageToChat(data.response, 'bot');
@@ -161,8 +261,8 @@ function sendAIMessage(event) {
     })
     .catch(error => {
         removeTypingIndicator();
-        addMessageToChat('Sorry, I encountered an error processing your request. Please try again.', 'bot');
         console.error('AI Chat Error:', error);
+        addMessageToChat('Sorry, I encountered an error processing your request. Please make sure the AI service is running and try again.', 'bot');
         
         // Re-enable input
         input.disabled = false;
@@ -188,7 +288,7 @@ function addMessageToChat(message, sender) {
         messageDiv.innerHTML = `
             <div class="d-flex align-items-start gap-2">
                 <div class="ai-avatar d-flex align-items-center justify-content-center">
-                    <img src="/static/chatbot-icon.png" alt="AI" style="width: 24px; height: 24px; object-fit: contain;">
+                    <img src="/static/advisor.png" alt="AI" style="width: 50px; height: 50px; object-fit: contain;">
                 </div>
                 <div class="ai-message-content p-3">
                     <p class="mb-0">${escapeHtml(message)}</p>
@@ -213,7 +313,7 @@ function showTypingIndicator() {
     typingDiv.innerHTML = `
         <div class="d-flex align-items-start gap-2">
             <div class="ai-avatar d-flex align-items-center justify-content-center">
-                <img src="/static/chatbot-icon.png" alt="AI" style="width: 24px; height: 24px; object-fit: contain;">
+                <img src="/static/advisor.png" alt="AI" style="width: 50px; height: 50px; object-fit: contain;">
             </div>
             <div class="ai-message-content p-3">
                 <div class="typing-indicator">
@@ -243,3 +343,15 @@ function escapeHtml(text) {
     div.textContent = text;
     return div.innerHTML;
 }
+
+// ============================================================================
+// CLEANUP ON PAGE UNLOAD
+// ============================================================================
+
+window.addEventListener('beforeunload', () => {
+    if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+    }
+});
+
+console.log('AI Advisor loaded successfully!');
