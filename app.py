@@ -68,143 +68,168 @@ def after_request(response):
 @app.route("/")
 @login_required
 def index():
-    """Show dashboard"""
-    user_id = session["user_id"]
-
-    today = datetime.now()
-    week_ago = today - timedelta(days=7)
-    month_ago = today - timedelta(days=30)
-    year_ago = today - timedelta(days=365)
-    
-    weekly_income = db.execute("""
-        SELECT COALESCE(SUM(amount), 0) as total
-        FROM transactions
-        WHERE user_id = ? AND type = 'INCOME'
-        AND time >= ?
-    """, user_id, week_ago)[0]['total']
-    
-    weekly_expense = db.execute("""
-        SELECT COALESCE(SUM(amount), 0) as total
-        FROM transactions
-        WHERE user_id = ? AND type = 'EXPENSE'
-        AND time >= ?
-    """, user_id, week_ago)[0]['total']
-    
-    monthly_income = db.execute("""
-        SELECT COALESCE(SUM(amount), 0) as total
-        FROM transactions
-        WHERE user_id = ? AND type = 'INCOME'
-        AND time >= ?
-    """, user_id, month_ago)[0]['total']
-    
-    monthly_expense = db.execute("""
-        SELECT COALESCE(SUM(amount), 0) as total
-        FROM transactions
-        WHERE user_id = ? AND type = 'EXPENSE'
-        AND time >= ?
-    """, user_id, month_ago)[0]['total']
-    
-    yearly_income = db.execute("""
-        SELECT COALESCE(SUM(amount), 0) as total
-        FROM transactions
-        WHERE user_id = ? AND type = 'INCOME'
-        AND time >= ?
-    """, user_id, year_ago)[0]['total']
-    
-    yearly_expense = db.execute("""
-        SELECT COALESCE(SUM(amount), 0) as total
-        FROM transactions
-        WHERE user_id = ? AND type = 'EXPENSE'
-        AND time >= ?
-    """, user_id, year_ago)[0]['total']
-    
-    income_by_category = db.execute("""
-        SELECT category, SUM(amount) as total
-        FROM transactions
-        WHERE user_id = ? AND type = 'INCOME'
-        GROUP BY category
-        ORDER BY total DESC
-    """, user_id)
-    
-    # Prepare data for Chart.js
-    income_labels = [row['category'] for row in income_by_category]
-    income_values = [float(row['total']) for row in income_by_category]
-    
-    expense_by_category = db.execute("""
-        SELECT category, SUM(amount) as total
-        FROM transactions
-        WHERE user_id = ? AND type = 'EXPENSE'
-        GROUP BY category
-        ORDER BY total DESC
-    """, user_id)
-    
-    # Prepare data for Chart.js
-    expense_labels = [row['category'] for row in expense_by_category]
-    expense_values = [float(row['total']) for row in expense_by_category]
-    
-
-    recent_transactions = db.execute("""
-        SELECT id, name, amount, type, category, time, receipt_path
-        FROM transactions
-        WHERE user_id = ?
-        ORDER BY time DESC
-        LIMIT 10
-    """, user_id)
-    
-    for transaction in recent_transactions:
-        transaction['formatted_amount'] = f"${transaction['amount']:.2f}"
-        transaction['formatted_date'] = datetime.fromisoformat(str(transaction['time'])).strftime('%Y-%m-%d')
+    """Show dashboard with optimized queries and proper error handling"""
+    try:
+        user_id = session["user_id"]
         
-
-    budget = db.execute("""
-        SELECT amount FROM budgets
-        WHERE user_id = ? AND period = 'MONTHLY' AND is_active = 1
-    """, user_id)
-    
-    budget_data = None
-    if budget:
-        budget_amount = budget[0]['amount']
-        spent = monthly_expense
-        remaining = budget_amount - spent
-        percentage = (spent / budget_amount * 100) if budget_amount > 0 else 0
+        today = datetime.now()
+        week_ago = today - timedelta(days=7)
+        month_ago = today - timedelta(days=30)
+        year_ago = today - timedelta(days=365)
         
-        budget_data = {
-            'total': budget_amount,
-            'spent': spent,
-            'remaining': remaining,
-            'percentage': round(percentage, 1)
+        summary_data = db.execute("""
+            SELECT 
+                type,
+                SUM(CASE WHEN time >= ? THEN amount ELSE 0 END) as weekly_total,
+                SUM(CASE WHEN time >= ? THEN amount ELSE 0 END) as monthly_total,
+                SUM(CASE WHEN time >= ? THEN amount ELSE 0 END) as yearly_total
+            FROM transactions
+            WHERE user_id = ?
+            GROUP BY type
+        """, week_ago, month_ago, year_ago, user_id)
+        
+        weekly_income = weekly_expense = 0
+        monthly_income = monthly_expense = 0
+        yearly_income = yearly_expense = 0
+        
+        for row in summary_data:
+            if row['type'] == 'INCOME':
+                weekly_income = float(row['weekly_total'])
+                monthly_income = float(row['monthly_total'])
+                yearly_income = float(row['yearly_total'])
+            elif row['type'] == 'EXPENSE':
+                weekly_expense = float(row['weekly_total'])
+                monthly_expense = float(row['monthly_total'])
+                yearly_expense = float(row['yearly_total'])
+        
+        total_balance = yearly_income - yearly_expense
+        
+        summary = {
+            'balance': total_balance,
+            'monthly_income': monthly_income,
+            'monthly_expense': monthly_expense,
+            'weekly_income': weekly_income,
+            'weekly_expense': weekly_expense
         }
+        
+        categories = db.execute("""
+            SELECT name, type, color 
+            FROM categories 
+            ORDER BY type, name
+        """)
+        
+        category_colors = {cat['name']: cat['color'] for cat in categories}
 
-    total_balance = yearly_income - yearly_expense
-    
-    summary = {
-        'balance': total_balance,
-        'monthly_income': monthly_income,
-        'monthly_expense': monthly_expense,
-        'weekly_income': weekly_income,
-        'weekly_expense': weekly_expense
-    }
-
-    return render_template("index.html",
-        histogram_data=json.dumps
-        ({
+        income_by_category = db.execute("""
+            SELECT category, SUM(amount) as total
+            FROM transactions
+            WHERE user_id = ? AND type = 'INCOME'
+            GROUP BY category
+            ORDER BY total DESC
+        """, user_id)
+        
+        income_labels = [row['category'] for row in income_by_category]
+        income_values = [float(row['total']) for row in income_by_category]
+        income_colors = [category_colors.get(row['category'], '#28a745') for row in income_by_category]
+        
+        expense_by_category = db.execute("""
+            SELECT category, SUM(amount) as total
+            FROM transactions
+            WHERE user_id = ? AND type = 'EXPENSE'
+            GROUP BY category
+            ORDER BY total DESC
+        """, user_id)
+        
+        expense_labels = [row['category'] for row in expense_by_category]
+        expense_values = [float(row['total']) for row in expense_by_category]
+        expense_colors = [category_colors.get(row['category'], '#dc3545') for row in expense_by_category]
+        
+        recent_transactions = db.execute("""
+            SELECT id, name, amount, type, category, time, receipt_path
+            FROM transactions
+            WHERE user_id = ?
+            ORDER BY time DESC
+            LIMIT 10
+        """, user_id)
+        
+        for transaction in recent_transactions:
+            transaction['formatted_amount'] = f"${transaction['amount']:.2f}"
+            try:
+                transaction['formatted_date'] = datetime.fromisoformat(str(transaction['time'])).strftime('%Y-%m-%d')
+            except (ValueError, TypeError):
+                transaction['formatted_date'] = 'N/A'
+        
+        budget = db.execute("""
+            SELECT amount, start_date, end_date 
+            FROM budgets
+            WHERE user_id = ? AND period = 'MONTHLY' AND is_active = 1
+            LIMIT 1
+        """, user_id)
+        
+        budget_data = None
+        if budget:
+            budget_amount = float(budget[0]['amount'])
+            spent = monthly_expense
+            remaining = budget_amount - spent
+            percentage = (spent / budget_amount * 100) if budget_amount > 0 else 0
+            
+            budget_data = {
+                'total': budget_amount,
+                'spent': spent,
+                'remaining': remaining,
+                'percentage': round(percentage, 1)
+            }
+        
+        histogram_data = json.dumps({
             'labels': ['Weekly', 'Monthly', 'Yearly'],
-            'income': [float(weekly_income), float(monthly_income), float(yearly_income)],
-            'expenses': [float(weekly_expense), float(monthly_expense), float(yearly_expense)]
-        }),
-        income_chart_data=json.dumps
-        ({
+            'income': [weekly_income, monthly_income, yearly_income],
+            'expenses': [weekly_expense, monthly_expense, yearly_expense]
+        })
+        
+        income_chart_data = json.dumps({
             'labels': income_labels,
-            'values': income_values
-        }),
-        expense_chart_data=json.dumps
-        ({
+            'values': income_values,
+            'colors': income_colors 
+        })
+        
+        expense_chart_data = json.dumps({
             'labels': expense_labels,
-            'values': expense_values
-        }),
-        transactions=recent_transactions,
-        summary=summary,
-        budget=budget_data)
+            'values': expense_values,
+            'colors': expense_colors 
+        })
+        
+        return render_template(
+            "index.html",
+            histogram_data=histogram_data,
+            income_chart_data=income_chart_data,
+            expense_chart_data=expense_chart_data,
+            transactions=recent_transactions,
+            summary=summary,
+            budget=budget_data
+        )
+        
+    except Exception as e:
+        print(f"Error loading dashboard: {e}")
+        import traceback
+        traceback.print_exc()
+        
+        flash("Error loading some dashboard data. Please refresh the page.", "warning")
+        
+        return render_template(
+            "index.html",
+            histogram_data=json.dumps({'labels': [], 'income': [], 'expenses': []}),
+            income_chart_data=json.dumps({'labels': [], 'values': [], 'colors': []}),
+            expense_chart_data=json.dumps({'labels': [], 'values': [], 'colors': []}),
+            transactions=[],
+            summary={
+                'balance': 0,
+                'monthly_income': 0,
+                'monthly_expense': 0,
+                'weekly_income': 0,
+                'weekly_expense': 0
+            },
+            budget=None
+        )
 
 
 

@@ -356,10 +356,7 @@
                 labels: incomeChartData.labels,
                 datasets: [{
                     data: incomeChartData.values,
-                    backgroundColor: [
-                        '#28a745', '#20c997', '#17a2b8', '#6610f2', 
-                        '#6c757d', '#fd7e14', '#e83e8c'
-                    ],
+                    backgroundColor: incomeChartData.colors, 
                     borderWidth: 2
                 }]
             },
@@ -397,10 +394,7 @@
                 labels: expenseChartData.labels,
                 datasets: [{
                     data: expenseChartData.values,
-                    backgroundColor: [
-                        '#dc3545', '#fd7e14', '#ffc107', '#e83e8c', 
-                        '#6c757d', '#f8f9fa', '#343a40'
-                    ],
+                    backgroundColor: expenseChartData.colors,
                     borderWidth: 2
                 }]
             },
