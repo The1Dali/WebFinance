@@ -9,159 +9,128 @@
 {% endblock %}
 
 {% block main %}
-<div class="container mt-4">
-    <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h2><i class="bi bi-grid-3x3-gap me-2"></i>Manage Categories</h2>
-            <p class="text-muted">Add, edit, or organize your transaction categories</p>
+    <div class="container mt-4">
+        <!-- Header -->
+        <div class="d-flex align-items-center mb-4">
+            <a href="/add" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-2"></i>Back to Add Transaction
+            </a>
         </div>
-        <a href="/add" class="btn btn-outline-secondary">
-            <i class="bi bi-arrow-left me-2"></i>Back to Add Transaction
-        </a>
-    </div>
 
-    <!-- Add New Category Card -->
-    <div class="card shadow-sm mb-4">
-        <div class="card-header bg-primary text-white">
-            <h5 class="mb-0"><i class="bi bi-plus-circle me-2"></i>Add New Category</h5>
-        </div>
-        <div class="card-body">
-            <form id="addCategoryForm" onsubmit="addCategory(event)">
-                <div class="row g-3">
-                    <div class="col-md-4">
-                        <label for="categoryName" class="form-label">Category Name</label>
-                        <input type="text" class="form-control" id="categoryName" 
-                               placeholder="e.g., Groceries, Salary" required>
-                    </div>
-                    <div class="col-md-3">
-                        <label for="categoryType" class="form-label">Type</label>
-                        <select class="form-select" id="categoryType" required>
-                            <option value="">Select type...</option>
-                            <option value="EXPENSE">Expense</option>
-                            <option value="INCOME">Income</option>
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <label for="categoryColor" class="form-label">Color</label>
-                        <div class="d-flex gap-2 align-items-center">
+        <!-- Add New Category Card -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="bi bi-plus-circle me-2"></i>Add New Category</h5>
+            </div>
+            <div class="card-body">
+                <form action="/categories/add" method="POST">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label for="categoryName" class="form-label">Category Name</label>
+                            <input type="text" class="form-control" id="categoryName" name="name"
+                                placeholder="e.g., Groceries, Salary" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="categoryType" class="form-label">Type</label>
+                            <select class="form-select" id="categoryType" name="type" required>
+                                <option value="">Select type...</option>
+                                <option value="EXPENSE">Expense</option>
+                                <option value="INCOME">Income</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="categoryColor" class="form-label">Color</label>
                             <input type="color" class="form-control form-control-color" 
-                                   id="categoryColor" value="#dc3545" style="width: 60px;">
-                            <button type="button" class="btn btn-sm btn-outline-secondary" 
-                                    onclick="resetDefaultColor()">
-                                <i class="bi bi-arrow-clockwise"></i> Auto
+                                id="categoryColor" name="color" value="#dc3545" style="width: 60px;">
+                            <small class="text-muted">Leave as default for auto-color</small>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="bi bi-plus-lg me-1"></i>Add
                             </button>
                         </div>
-                        <small class="text-muted">Auto picks based on type</small>
-                    </div>
-                    <div class="col-md-2 d-flex align-items-end">
-                        <button type="submit" class="btn btn-primary w-100">
-                            <i class="bi bi-plus-lg me-1"></i>Add
-                        </button>
-                    </div>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Categories Display -->
-    <div class="row">
-        <!-- Expense Categories -->
-        <div class="col-md-6 mb-4">
-            <div class="card shadow-sm">
-                <div class="card-header bg-danger text-white">
-                    <h5 class="mb-0">
-                        <i class="bi bi-wallet2 me-2"></i>Expense Categories
-                        <span class="badge bg-light text-dark float-end" id="expenseCount">0</span>
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <div id="expenseCategories" class="category-list">
-                        <!-- Populated by JavaScript -->
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Income Categories -->
-        <div class="col-md-6 mb-4">
-            <div class="card shadow-sm">
-                <div class="card-header bg-success text-white">
-                    <h5 class="mb-0">
-                        <i class="bi bi-cash-stack me-2"></i>Income Categories
-                        <span class="badge bg-light text-dark float-end" id="incomeCount">0</span>
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <div id="incomeCategories" class="category-list">
-                        <!-- Populated by JavaScript -->
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Edit Category Modal -->
-<div class="modal fade" id="editCategoryModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Edit Category</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <form id="editCategoryForm" onsubmit="saveEditCategory(event)">
-                    <input type="hidden" id="editCategoryId">
-                    <div class="mb-3">
-                        <label for="editCategoryName" class="form-label">Category Name</label>
-                        <input type="text" class="form-control" id="editCategoryName" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="editCategoryType" class="form-label">Type</label>
-                        <select class="form-select" id="editCategoryType" required disabled>
-                            <option value="EXPENSE">Expense</option>
-                            <option value="INCOME">Income</option>
-                        </select>
-                        <small class="text-muted">Type cannot be changed to maintain data integrity</small>
-                    </div>
-                    <div class="mb-3">
-                        <label for="editCategoryColor" class="form-label">Color</label>
-                        <input type="color" class="form-control form-control-color" id="editCategoryColor">
-                    </div>
-                    <div class="d-flex gap-2 justify-content-end">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-primary">Save Changes</button>
                     </div>
                 </form>
             </div>
         </div>
-    </div>
-</div>
 
-<!-- Delete Confirmation Modal -->
-<div class="modal fade" id="deleteCategoryModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title">Delete Category</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <p>Are you sure you want to delete the category <strong id="deleteCategoryName"></strong>?</p>
-                <div class="alert alert-warning" id="deleteWarning" style="display: none;">
-                    <i class="bi bi-exclamation-triangle me-2"></i>
-                    This category has <strong id="transactionCount">0</strong> transaction(s).
-                    Deleting it will remove the category from those transactions.
+        <!-- Categories Display -->
+        <div class="row">
+            <!-- Expense Categories -->
+            <div class="col-md-6 mb-4">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-danger text-white">
+                        <h5 class="mb-0">
+                            <i class="bi bi-wallet2 me-2"></i>Expense Categories
+                            <span class="badge bg-light text-dark float-end">{{ expense_count }}</span>
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        {% if expense_categories %}
+                            <div class="category-list">
+                                {% for category in expense_categories %}
+                                <div class="d-flex align-items-center justify-content-between p-2 mb-2 border rounded">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="badge" style="background-color: {{ category.color }}; width: 20px; height: 20px;"></span>
+                                        <strong>{{ category.name }}</strong>
+                                    </div>
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="/categories/edit/{{ category.id }}" class="btn btn-outline-primary">
+                                            <i class="bi bi-pencil"></i> Edit
+                                        </a>
+                                        <a href="/categories/delete/{{ category.id }}" 
+                                           class="btn btn-outline-danger"
+                                           onclick="return confirm('Are you sure you want to delete {{ category.name }}?')">
+                                            <i class="bi bi-trash"></i> Delete
+                                        </a>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <p class="text-muted text-center py-4">No expense categories yet. Add one above!</p>
+                        {% endif %}
+                    </div>
                 </div>
-                <input type="hidden" id="deleteCategoryId">
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-danger" onclick="confirmDeleteCategory()">
-                    <i class="bi bi-trash me-1"></i>Delete Category
-                </button>
+
+            <!-- Income Categories -->
+            <div class="col-md-6 mb-4">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">
+                            <i class="bi bi-cash-stack me-2"></i>Income Categories
+                            <span class="badge bg-light text-dark float-end">{{ income_count }}</span>
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        {% if income_categories %}
+                            <div class="category-list">
+                                {% for category in income_categories %}
+                                <div class="d-flex align-items-center justify-content-between p-2 mb-2 border rounded">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="badge" style="background-color: {{ category.color }}; width: 20px; height: 20px;"></span>
+                                        <strong>{{ category.name }}</strong>
+                                    </div>
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="/categories/edit/{{ category.id }}" class="btn btn-outline-primary">
+                                            <i class="bi bi-pencil"></i> Edit
+                                        </a>
+                                        <a href="/categories/delete/{{ category.id }}" 
+                                           class="btn btn-outline-danger"
+                                           onclick="return confirm('Are you sure you want to delete {{ category.name }}?')">
+                                            <i class="bi bi-trash"></i> Delete
+                                        </a>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <p class="text-muted text-center py-4">No income categories yet. Add one above!</p>
+                        {% endif %}
+                    </div>
+                </div>
             </div>
         </div>
     </div>
-</div>
+{% endblock %}

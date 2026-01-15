@@ -620,230 +620,6 @@ def ai_chat():
             'response': 'Sorry, something went wrong. Please try again.'
         }), 500
 
-@app.route("/api/categories", methods=["GET"])
-@login_required
-def get_categories():
-    """Get all categories (API endpoint)"""
-    try:
-        categories = db.execute("""
-            SELECT id, name, type, color 
-            FROM categories 
-            ORDER BY type, name
-        """)
-        
-        return jsonify(categories)
-        
-    except Exception as e:
-        print(f"Error fetching categories: {e}")
-        return jsonify({'error': str(e)}), 500
-
-
-@app.route("/api/categories/add", methods=["POST"])
-@login_required
-def add_category():
-    """Add a new category"""
-    try:
-        data = request.get_json()
-        name = data.get('name', '').strip()
-        category_type = data.get('type', '').strip()
-        color = data.get('color', '').strip()
-        
-        if not name:
-            return jsonify({'success': False, 'error': 'Category name is required'}), 400
-        
-        if category_type not in ['EXPENSE', 'INCOME']:
-            return jsonify({'success': False, 'error': 'Invalid category type'}), 400
-        
-        if not color or color == '#6c757d':
-            existing_count = db.execute("""
-                SELECT COUNT(*) as count FROM categories WHERE type = ?
-            """, category_type)[0]['count']
-            
-            INCOME_COLORS = ['#28a745', '#20c997', '#17a2b8', '#00d084', '#4caf50', '#66bb6a', '#81c784', '#00bfa5']
-            EXPENSE_COLORS = ['#dc3545', '#e74c3c', '#c82333', '#ff6b6b', '#f44336', '#ef5350', '#e57373', '#ff5252']
-            
-            if category_type == 'INCOME':
-                color = INCOME_COLORS[existing_count % len(INCOME_COLORS)]
-            else:
-                color = EXPENSE_COLORS[existing_count % len(EXPENSE_COLORS)]
-        
-        existing = db.execute("""
-            SELECT id FROM categories 
-            WHERE LOWER(name) = LOWER(?) AND type = ?
-        """, name, category_type)
-        
-        if existing:
-            return jsonify({
-                'success': False, 
-                'error': f'A {category_type.lower()} category with this name already exists'
-            }), 400
-        
-        category_id = db.execute("""
-            INSERT INTO categories (name, type, color) 
-            VALUES (?, ?, ?)
-        """, name, category_type, color)
-        
-        print(f"Added new category: {name} ({category_type}) with color {color}")
-        
-        return jsonify({
-            'success': True, 
-            'message': 'Category added successfully',
-            'id': category_id
-        })
-        
-    except Exception as e:
-        print(f"Error adding category: {e}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-
-@app.route("/api/categories/edit", methods=["POST"])
-@login_required
-def edit_category():
-    """Edit an existing category"""
-    try:
-        data = request.get_json()
-        category_id = data.get('id')
-        name = data.get('name', '').strip()
-        color = data.get('color', '#6c757d')
-        
-        if not category_id:
-            return jsonify({'success': False, 'error': 'Category ID is required'}), 400
-        
-        if not name:
-            return jsonify({'success': False, 'error': 'Category name is required'}), 400
-        
-        category = db.execute("SELECT * FROM categories WHERE id = ?", category_id)
-        
-        if not category:
-            return jsonify({'success': False, 'error': 'Category not found'}), 404
-        
-        existing = db.execute("""
-            SELECT id FROM categories 
-            WHERE LOWER(name) = LOWER(?) AND type = ? AND id != ?
-        """, name, category[0]['type'], category_id)
-        
-        if existing:
-            return jsonify({
-                'success': False, 
-                'error': f'Another {category[0]["type"].lower()} category with this name already exists'
-            }), 400
-        
-        db.execute("""
-            UPDATE categories 
-            SET name = ?, color = ? 
-            WHERE id = ?
-        """, name, color, category_id)
-        
-        print(f"Updated category {category_id}: {name}")
-        
-        return jsonify({
-            'success': True, 
-            'message': 'Category updated successfully'
-        })
-        
-    except Exception as e:
-        print(f"Error updating category: {e}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-
-@app.route("/api/categories/<int:category_id>/count", methods=["GET"])
-@login_required
-def category_transaction_count(category_id):
-    """Get count of transactions using this category"""
-    try:
-        user_id = session["user_id"]
-        
-        category = db.execute("""
-            SELECT name, type FROM categories WHERE id = ?
-        """, category_id)
-        
-        if not category:
-            return jsonify({'error': 'Category not found'}), 404
-        
-        count = db.execute("""
-            SELECT COUNT(*) as count 
-            FROM transactions 
-            WHERE user_id = ? AND category = ?
-        """, user_id, category[0]['name'])
-        
-        return jsonify({
-            'count': count[0]['count'],
-            'category': category[0]['name']
-        })
-        
-    except Exception as e:
-        print(f"Error counting transactions: {e}")
-        return jsonify({'error': str(e)}), 500
-
-
-@app.route("/api/categories/delete", methods=["POST"])
-@login_required
-def delete_category():
-    """Delete a category"""
-    try:
-        data = request.get_json()
-        category_id = data.get('id')
-        
-        if not category_id:
-            return jsonify({'success': False, 'error': 'Category ID is required'}), 400
-        
-        category = db.execute("SELECT * FROM categories WHERE id = ?", category_id)
-        
-        if not category:
-            return jsonify({'success': False, 'error': 'Category not found'}), 404
-        
-        category_name = category[0]['name']
-        
-        default_categories = [
-            'Food', 'Transport', 'Bills', 'Entertainment', 'Shopping', 'Healthcare', 'Other',
-            'Salary', 'Freelance', 'Investment', 'Gift', 'Other'
-        ]
-        
-        if category_name in default_categories:
-            return jsonify({
-                'success': False, 
-                'error': 'Cannot delete default categories. You can edit them instead.'
-            }), 400
-        
-        user_id = session["user_id"]
-        category_type = category[0]['type']
-        
-        other_category = db.execute("""
-            SELECT id FROM categories 
-            WHERE name = 'Other' AND type = ?
-        """, category_type)
-        
-        if not other_category:
-            db.execute("""
-                INSERT INTO categories (name, type, color) 
-                VALUES ('Other', ?, '#6c757d')
-            """, category_type)
-        
-        db.execute("""
-            UPDATE transactions 
-            SET category = 'Other' 
-            WHERE user_id = ? AND category = ?
-        """, user_id, category_name)
-        
-        db.execute("DELETE FROM categories WHERE id = ?", category_id)
-        
-        print(f"Deleted category: {category_name}")
-        
-        return jsonify({
-            'success': True, 
-            'message': 'Category deleted successfully'
-        })
-        
-    except Exception as e:
-        print(f"Error deleting category: {e}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
-
 @app.route("/budget/get", methods=["GET"])
 @login_required
 def get_budget():
@@ -1032,8 +808,196 @@ def delete_budget():
 @app.route("/categories")
 @login_required
 def categories():
-    """Category management page"""
-    return render_template("categories.html")
+    """Category management page with server-side rendering"""
+    try:
+        all_categories = db.execute("""
+            SELECT id, name, type, color 
+            FROM categories 
+            ORDER BY type, name
+        """)
+        
+        expense_categories = [c for c in all_categories if c['type'] == 'EXPENSE']
+        income_categories = [c for c in all_categories if c['type'] == 'INCOME']
+        
+        return render_template(
+            "categories.html",
+            expense_categories=expense_categories,
+            income_categories=income_categories,
+            expense_count=len(expense_categories),
+            income_count=len(income_categories)
+        )
+        
+    except Exception as e:
+        print(f"Error loading categories page: {e}")
+        import traceback
+        traceback.print_exc()
+        
+        flash("Unable to load categories. Please try again.", "error")
+        return render_template(
+            "categories.html",
+            expense_categories=[],
+            income_categories=[],
+            expense_count=0,
+            income_count=0
+        )
+
+@app.route("/categories/add", methods=["POST"])
+@login_required
+def add_category_form():
+    """Add a new category via form submission"""
+    try:
+        name = request.form.get('name', '').strip()
+        category_type = request.form.get('type', '').strip()
+        color = request.form.get('color', '').strip()
+        
+        if not name:
+            flash('Category name is required', 'error')
+            return redirect("/categories")
+        
+        if category_type not in ['EXPENSE', 'INCOME']:
+            flash('Invalid category type', 'error')
+            return redirect("/categories")
+        
+        if not color or color == '#dc3545':
+            existing_count = db.execute("""
+                SELECT COUNT(*) as count FROM categories WHERE type = ?
+            """, category_type)[0]['count']
+            
+            INCOME_COLORS = ['#28a745', '#20c997', '#17a2b8', '#00d084', '#4caf50', '#66bb6a', '#81c784', '#00bfa5']
+            EXPENSE_COLORS = ['#dc3545', '#e74c3c', '#c82333', '#ff6b6b', '#f44336', '#ef5350', '#e57373', '#ff5252']
+            
+            if category_type == 'INCOME':
+                color = INCOME_COLORS[existing_count % len(INCOME_COLORS)]
+            else:
+                color = EXPENSE_COLORS[existing_count % len(EXPENSE_COLORS)]
+        
+        existing = db.execute("""
+            SELECT id FROM categories 
+            WHERE LOWER(name) = LOWER(?) AND type = ?
+        """, name, category_type)
+        
+        if existing:
+            flash(f'A {category_type.lower()} category with this name already exists', 'error')
+            return redirect("/categories")
+        
+        db.execute("""
+            INSERT INTO categories (name, type, color) 
+            VALUES (?, ?, ?)
+        """, name, category_type, color)
+        
+        flash(f'Category "{name}" added successfully!', 'success')
+        return redirect("/categories")
+        
+    except Exception as e:
+        print(f"Error adding category: {e}")
+        import traceback
+        traceback.print_exc()
+        flash('An error occurred while adding the category', 'error')
+        return redirect("/categories")
+
+
+@app.route("/categories/edit/<int:category_id>", methods=["GET", "POST"])
+@login_required
+def edit_category_form(category_id):
+    """Edit an existing category"""
+    try:
+        category = db.execute("SELECT * FROM categories WHERE id = ?", category_id)
+        
+        if not category:
+            flash('Category not found', 'error')
+            return redirect("/categories")
+        
+        category = category[0]
+        
+        if request.method == "POST":
+            name = request.form.get('name', '').strip()
+            color = request.form.get('color', '#6c757d')
+            
+            if not name:
+                flash('Category name is required', 'error')
+                return redirect(f"/categories/edit/{category_id}")
+            
+            existing = db.execute("""
+                SELECT id FROM categories 
+                WHERE LOWER(name) = LOWER(?) AND type = ? AND id != ?
+            """, name, category['type'], category_id)
+            
+            if existing:
+                flash(f'Another {category["type"].lower()} category with this name already exists', 'error')
+                return redirect(f"/categories/edit/{category_id}")
+            
+            db.execute("""
+                UPDATE categories 
+                SET name = ?, color = ? 
+                WHERE id = ?
+            """, name, color, category_id)
+            
+            flash(f'Category "{name}" updated successfully!', 'success')
+            return redirect("/categories")
+        
+        return render_template("edit-category.html", category=category)
+        
+    except Exception as e:
+        print(f"Error editing category: {e}")
+        import traceback
+        traceback.print_exc()
+        flash('An error occurred while editing the category', 'error')
+        return redirect("/categories")
+
+
+@app.route("/categories/delete/<int:category_id>", methods=["GET", "POST"])
+@login_required
+def delete_category_form(category_id):
+    """Delete a category"""
+    try:
+        category = db.execute("SELECT * FROM categories WHERE id = ?", category_id)
+        
+        if not category:
+            flash('Category not found', 'error')
+            return redirect("/categories")
+        
+        category_name = category[0]['name']
+        category_type = category[0]['type']
+        
+        default_categories = [
+            'Food', 'Transport', 'Bills', 'Entertainment', 'Shopping', 'Healthcare', 'Other',
+            'Salary', 'Freelance', 'Investment', 'Gift', 'Other'
+        ]
+        
+        if category_name in default_categories:
+            flash('Cannot delete default categories. You can edit them instead.', 'error')
+            return redirect("/categories")
+        
+        user_id = session["user_id"]
+        
+        other_category = db.execute("""
+            SELECT id FROM categories 
+            WHERE name = 'Other' AND type = ?
+        """, category_type)
+        
+        if not other_category:
+            db.execute("""
+                INSERT INTO categories (name, type, color) 
+                VALUES ('Other', ?, '#6c757d')
+            """, category_type)
+        
+        db.execute("""
+            UPDATE transactions 
+            SET category = 'Other' 
+            WHERE user_id = ? AND category = ?
+        """, user_id, category_name)
+        
+        db.execute("DELETE FROM categories WHERE id = ?", category_id)
+        
+        flash(f'Category "{category_name}" deleted successfully!', 'success')
+        return redirect("/categories")
+        
+    except Exception as e:
+        print(f"Error deleting category: {e}")
+        import traceback
+        traceback.print_exc()
+        flash('An error occurred while deleting the category', 'error')
+        return redirect("/categories")
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
