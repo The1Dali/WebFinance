@@ -4,10 +4,6 @@
     Add Transaction
 {% endblock %}
 
-{% block head %}
-<script src="static/add-transaction.js"></script>
-{% endblock %}
-
 {% block main %}
     <!-- Main Form -->
     <main class="container mb-5">
@@ -73,7 +69,7 @@
                                 {% endif %}
                                 {% endfor %}
                             </optgroup>
-                            <optgroup label="Income Categories" id="incomeCategories" style="display: none;">
+                            <optgroup label="Income Categories" id="incomeCategories">
                                 {% for category in categories %}
                                 {% if category['type'] == 'INCOME' %}
                                 <option value="{{ category['name'] }}" data-color="{{ category['color'] or '#28a745' }}">
@@ -183,5 +179,9 @@
             </div>
         </div>
     </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="static/add-transaction.js"></script>
 {% endblock %}
 

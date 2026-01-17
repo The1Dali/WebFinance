@@ -253,42 +253,42 @@ def add_transaction():
         
         if not name:
             flash("Transaction name is required", "error")
-            return render_template("addt.html", categories=categories)
+            return render_template("add-transaction.html", categories=categories)
         
         if not amount:
             flash("Amount is required", "error")
-            return render_template("addt.html", categories=categories)
+            return render_template("add-transaction.html", categories=categories)
         
         try:
             amount = float(amount)
             if amount <= 0:
                 flash("Amount must be positive", "error")
-                return render_template("addt.html", categories=categories)
+                return render_template("add-transaction.html", categories=categories)
         except ValueError:
             flash("Invalid amount", "error")
-            return render_template("addt.html", categories=categories)
+            return render_template("add-transaction.html", categories=categories)
         
         if not transaction_type or transaction_type not in ['EXPENSE', 'INCOME']:
             flash("Invalid transaction type", "error")
-            return render_template("addt.html", categories=categories)
+            return render_template("add-transaction.html", categories=categories)
         
         if not category:
             flash("Category is required", "error")
-            return render_template("addt.html", categories=categories)
+            return render_template("add-transaction.html", categories=categories)
 
         valid_category = db.execute("SELECT * FROM categories WHERE name = ? AND type = ?", category, transaction_type)
         if not valid_category:
             flash("Invalid category for transaction type", "error")
-            return render_template("addt.html", categories=categories)
+            return render_template("add-transaction.html", categories=categories)
 
         if not transaction_date:
             flash("Date is required", "error")
-            return render_template("addt.html", categories=categories)
+            return render_template("add-transaction.html", categories=categories)
         
         if is_recurring:
             if not recurring_frequency or recurring_frequency not in ['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY']:
                 flash("Invalid recurring frequency", "error")
-                return render_template("addt.html", categories=categories)
+                return render_template("add-transaction.html", categories=categories)
         
         
         receipt_path = None
@@ -301,7 +301,7 @@ def add_transaction():
                 
                 if file_size > MAX_FILE_SIZE:
                     flash("File size must be less than 5MB", "error")
-                    return render_template("addt.html", categories=categories)
+                    return render_template("add-transaction.html", categories=categories)
                 
                 timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
                 filename = secure_filename(file.filename)
@@ -385,7 +385,7 @@ def add_transaction():
                 os.remove(receipt_path)
             
             flash(f"Error adding transaction: {str(e)}", "error")
-            return render_template("addt.html", categories=categories)
+            return render_template("add-transaction.html", categories=categories)
     
 
     return render_template("add-transaction.html", categories=categories)

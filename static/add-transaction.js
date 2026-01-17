@@ -4,6 +4,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('date').value = today;
     
+    // Initialize category visibility - show expense, hide income by default
+    const expenseCat = document.getElementById('expenseCategories');
+    const incomeCat = document.getElementById('incomeCategories');
+    expenseCat.removeAttribute('style');
+    incomeCat.setAttribute('style', 'display: none;');
+    
     // Initialize category preview
     updateCategoryPreview();
 });
@@ -15,12 +21,19 @@ document.querySelectorAll('input[name="type"]').forEach(radio => {
         const incomeCat = document.getElementById('incomeCategories');
         const categorySelect = document.getElementById('category');
         
+        console.log('Transaction type changed to:', this.value);
+        console.log('Expense optgroup:', expenseCat);
+        console.log('Income optgroup:', incomeCat);
+        
         if (this.value === 'EXPENSE') {
-            expenseCat.style.display = '';
-            incomeCat.style.display = 'none';
+            expenseCat.removeAttribute('style');
+            incomeCat.setAttribute('style', 'display: none;');
+            console.log('Showing expense categories');
         } else {
-            expenseCat.style.display = 'none';
-            incomeCat.style.display = '';
+            expenseCat.setAttribute('style', 'display: none;');
+            incomeCat.removeAttribute('style');
+            console.log('Showing income categories');
+            console.log('Income options count:', incomeCat.querySelectorAll('option').length);
         }
         categorySelect.value = '';
         updateCategoryPreview();
